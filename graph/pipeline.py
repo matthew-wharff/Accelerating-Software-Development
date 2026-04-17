@@ -18,13 +18,14 @@ from langgraph.graph import END, START, StateGraph
 
 import re
 
-from agents.coder import run_coder
+from agents.coder import run_coder_task
 from agents.critic import run_critic
-from scripts.file_writer import write_project_files
 from scripts.logger import get_logger
 from state.schema import PipelineState, TaskEntry, TaskLogEntry, default_state
 
 CONVENTIONS_PATH = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
+SHARED_DEPS_PATH = Path(__file__).parent.parent / "context" / "shared_dependencies.md"
+INTERFACES_PATH = Path(__file__).parent.parent / "context" / "INTERFACES.py"
 
 logger = get_logger(__name__)
 
@@ -74,19 +75,45 @@ def coder_node(state: PipelineState) -> dict:
         "coder_node: starting task %s (%s)", task["task_id"], task["target_file"]
     )
 
+    project_name = _project_name_slug(state.get("project_brief", ""))
+    interface_refs = task.get("interface_refs", [])
+    dependency_paths = task.get("dependency_paths", [])
+
     coder_task = {
+        "task_id": task["task_id"],
         "target_file": task["target_file"],
-        "task_description": task["description"],
-        "relevant_interfaces": "\n".join(task.get("interface_refs", [])),
-        "dependencies_context": "\n".join(task.get("dependency_paths", [])),
+        "description": task["description"],
+        "interface_refs": interface_refs,
+        "dependency_paths": dependency_paths,
+        "project_name": project_name,
     }
 
-    project_name = _project_name_slug(state.get("project_brief", ""))
+    # Build relevant_interfaces: pass full INTERFACES.py when refs exist.
+    # TODO: filter to only the named symbols from interface_refs (optimization).
+    relevant_interfaces = ""
+    if interface_refs and INTERFACES_PATH.exists():
+        relevant_interfaces = INTERFACES_PATH.read_text(encoding="utf-8")
+
+    # Build prior_signatures from completed task log entries this task depends on.
+    prior_sig_parts: list[str] = []
+    task_log = state.get("task_log", [])
+    for dep_path in dependency_paths:
+        for entry in task_log:
+            if entry["file_path"].endswith(dep_path) and entry.get("interface_signature"):
+                prior_sig_parts.append(f"# {dep_path}\n{entry['interface_signature']}")
+                break
+    prior_signatures = "\n\n".join(prior_sig_parts)
 
     try:
         conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
-        code_dict = run_coder(coder_task, conventions)
-        new_paths = write_project_files(code_dict, project_name)
+        shared_deps = SHARED_DEPS_PATH.read_text(encoding="utf-8")
+        file_path, extracted_interface = run_coder_task(
+            task=coder_task,
+            shared_deps=shared_deps,
+            relevant_interfaces=relevant_interfaces,
+            prior_signatures=prior_signatures,
+            conventions=conventions,
+        )
     except KeyError as exc:
         logger.error("coder_node: missing required task key: %s", exc)
         return {"status": "failed"}
@@ -99,19 +126,18 @@ def coder_node(state: PipelineState) -> dict:
         logger.error("coder_node: file_writer error for %s: %s", task["target_file"], exc)
         return {"status": "failed"}
 
-    file_path = new_paths[0]
     log_entry: TaskLogEntry = {
         "task_id": task["task_id"],
         "task_name": f"Implement {task['target_file']}",
         "status": "complete",
         "file_path": file_path,
-        "interface_signature": "",  # populated by Synthesis node in later milestones
+        "interface_signature": extracted_interface,
     }
 
     logger.info("coder_node: wrote %s", file_path)
 
     return {
-        "generated_file_paths": state["generated_file_paths"] + new_paths,
+        "generated_file_paths": state["generated_file_paths"] + [file_path],
         "task_log": state["task_log"] + [log_entry],
         "current_task_index": current_index + 1,
     }
