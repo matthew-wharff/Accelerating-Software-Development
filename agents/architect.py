@@ -14,6 +14,7 @@ logger = get_logger(__name__)
 
 CONTEXT_DIR = Path(__file__).parent.parent / "context"
 MODEL = "claude-sonnet-4-20250514"
+MODEL_HAIKU = "claude-haiku-4-5-20251001"
 
 SYSTEM_PROMPT_SPEC = """\
 You are a principal software architect. Your single job is to produce a complete, \
@@ -409,6 +410,343 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         "task_queue_path": str(task_queue_path),
         "task_queue": task_queue,
     }
+
+
+SYSTEM_PROMPT_EVALUATE = """\
+You are a strict code review oracle. You receive a task specification excerpt, \
+the expected interface contract from shared_dependencies.md, and the public \
+interface signature that was actually extracted from the generated file.
+
+PASS if ALL of the following are true:
+- Every public symbol required by the task description and shared_dependencies.md \
+  is declared in the extracted interface.
+- Function and method signatures match the expected types (parameter names, type \
+  annotations, return type).
+- No required symbol is missing or renamed.
+
+FAIL if ANY of the following are true:
+- A required function, class, or constant is absent.
+- A type annotation does not match the contract (e.g. returns str instead of int).
+- The interface is empty and the task was not a stub.
+
+Respond with EXACTLY two lines — no preamble, no explanation, no markdown:
+Line 1: PASS  OR  FAIL
+Line 2: One sentence reason (25 words max). If PASS, write "Interface satisfies all contracts."\
+"""
+
+SYSTEM_PROMPT_REDECOMPOSE = """\
+You are a principal software architect performing emergency task decomposition.
+
+A single coding task has failed validation 3 times in a row. You must split it \
+into exactly 2 smaller, independently-implementable subtasks that together \
+accomplish everything the original task required.
+
+Rules:
+- Each subtask must have a unique target_file.
+- If the original task produces one file, the natural split is: \
+  (1) data models / pure logic, (2) integration / I/O layer.
+- Each subtask description must be self-contained (3-4 sentences). Do NOT \
+  reference the other subtask by name — the Coder cannot see sibling tasks.
+- dependency_paths in subtask 2 should include the target_file of subtask 1 if \
+  subtask 2 depends on it.
+- interface_refs must only list names that exist in the original task's interface_refs.
+- Preserve the original task_id prefix with letter suffixes: \
+  if original was "task_005", produce "task_005a" and "task_005b".
+
+Return ONLY a raw JSON array of exactly 2 objects. First char `[`, last char `]`.
+Each object has exactly these keys: task_id, target_file, description, \
+interface_refs, dependency_paths.\
+"""
+
+
+def run_architect_evaluate(
+    task: TaskEntry,
+    interface_signature: str,
+    spec_path: str,
+    shared_deps_path: str,
+) -> tuple[bool, str]:
+    """Evaluate whether a generated file's interface satisfies its task contract.
+
+    Uses Haiku for cost efficiency. Checks extracted public interface against the
+    task description and shared_dependencies.md contracts. Does not re-read full
+    source code — operates on compact signatures only.
+
+    Args:
+        task: The TaskEntry that was just executed by the Coder.
+        interface_signature: Extracted public interface returned by run_coder_task.
+        spec_path: Absolute path to architect_spec.md on disk (reserved for future use).
+        shared_deps_path: Absolute path to shared_dependencies.md on disk.
+
+    Returns:
+        Tuple of (passed, correction_notes). passed is True if the interface
+        satisfies the contract. correction_notes is empty when passed is True.
+
+    Raises:
+        anthropic.APIError: If the Haiku API call fails.
+        OSError: If shared_deps_path cannot be read.
+    """
+    shared_deps_content = Path(shared_deps_path).read_text(encoding="utf-8")
+
+    user_prompt = (
+        f"## Task Description\n\n{task['description']}\n\n"
+        f"## Expected Interface (from shared_dependencies.md)\n\n"
+        f"{shared_deps_content}\n\n"
+        f"## Extracted Interface Signature (from generated file)\n\n"
+        f"File: {task['target_file']}\n\n"
+        f"{interface_signature}\n\n"
+        "Evaluate whether the extracted interface satisfies the contracts above."
+    )
+
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+    try:
+        response = client.messages.create(
+            model=MODEL_HAIKU,
+            max_tokens=128,
+            system=[
+                {
+                    "type": "text",
+                    "text": SYSTEM_PROMPT_EVALUATE,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+    except anthropic.APIError as exc:
+        logger.error(
+            "run_architect_evaluate: Haiku API call failed for %s: %s",
+            task["target_file"],
+            exc,
+        )
+        raise
+
+    raw_text = ""
+    for block in response.content:
+        if isinstance(block, anthropic.types.TextBlock):
+            raw_text = block.text.strip()
+            break
+
+    lines = raw_text.splitlines()
+    verdict = lines[0].strip().upper() if lines else "FAIL"
+    reason = lines[1].strip() if len(lines) > 1 else "Evaluation response malformed."
+
+    passed = verdict == "PASS"
+    correction_notes = "" if passed else reason
+
+    logger.info(
+        "run_architect_evaluate: %s → %s | %s",
+        task["target_file"],
+        verdict,
+        reason,
+    )
+    return passed, correction_notes
+
+
+def run_architect_redecompose(
+    failing_task: TaskEntry,
+    spec_path: str,
+    shared_deps_path: str,
+) -> list[TaskEntry]:
+    """Re-decompose a repeatedly-failing task into 2 smaller subtasks.
+
+    Called when task_failure_count reaches 3. Uses Sonnet for the structural
+    reasoning required to split a task while preserving interface contracts.
+    Writes nothing to disk — the caller splices the returned entries into state.
+
+    Args:
+        failing_task: The TaskEntry that has exceeded the failure threshold.
+        spec_path: Absolute path to architect_spec.md on disk.
+        shared_deps_path: Absolute path to shared_dependencies.md on disk.
+
+    Returns:
+        List of exactly 2 TaskEntry objects with task_ids suffixed "a" and "b".
+
+    Raises:
+        anthropic.APIError: If the Sonnet API call fails.
+        json.JSONDecodeError: If the response is not valid JSON.
+        ValueError: If the response does not contain exactly 2 valid TaskEntry objects.
+        OSError: If spec_path or shared_deps_path cannot be read.
+    """
+    spec_content = Path(spec_path).read_text(encoding="utf-8")
+    shared_deps_content = Path(shared_deps_path).read_text(encoding="utf-8")
+
+    user_prompt = (
+        f"## Failing Task\n\n"
+        f"task_id: {failing_task['task_id']}\n"
+        f"target_file: {failing_task['target_file']}\n"
+        f"description: {failing_task['description']}\n"
+        f"interface_refs: {failing_task['interface_refs']}\n"
+        f"dependency_paths: {failing_task['dependency_paths']}\n\n"
+        f"## ARCHITECT_SPEC.md\n\n{spec_content}\n\n"
+        f"## shared_dependencies.md\n\n{shared_deps_content}\n\n"
+        "Split the failing task into exactly 2 smaller subtasks. "
+        "Return ONLY the raw JSON array."
+    )
+
+    raw_json = _call_claude(SYSTEM_PROMPT_REDECOMPOSE, user_prompt, max_tokens=1024)
+    cleaned = _strip_markdown_fence(raw_json, "json")
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        logger.error(
+            "run_architect_redecompose: JSON parse failed for %s: %s\nRaw: %s",
+            failing_task["task_id"],
+            exc,
+            cleaned[:400],
+        )
+        raise
+
+    if not isinstance(parsed, list) or len(parsed) != 2:
+        raise ValueError(
+            f"run_architect_redecompose: expected list of 2, got "
+            f"{type(parsed).__name__} length "
+            f"{len(parsed) if isinstance(parsed, list) else 'N/A'}"
+        )
+
+    subtasks: list[TaskEntry] = []
+    for i, entry in enumerate(parsed):
+        missing = _REQUIRED_TASK_KEYS - entry.keys()
+        if missing:
+            raise ValueError(
+                f"run_architect_redecompose: subtask[{i}] missing keys: {missing}"
+            )
+        subtasks.append(TaskEntry(**entry))
+
+    logger.info(
+        "run_architect_redecompose: split %s → [%s, %s]",
+        failing_task["task_id"],
+        subtasks[0]["task_id"],
+        subtasks[1]["task_id"],
+    )
+    return subtasks
+
+
+SYSTEM_PROMPT_REVISION = """\
+You are a principal software architect performing a targeted revision pass.
+
+A synthesis report has identified blocking issues in a generated codebase. \
+Your job is to produce the smallest possible set of coding tasks that will \
+resolve every blocking issue — without re-implementing files that are not implicated.
+
+Rules:
+- Only create tasks for files explicitly mentioned under "High Priority Fixes".
+- Each task description must begin with "Fix: " and describe the specific problem \
+  to resolve. Include 2-3 sentences on exactly what to change.
+- Set dependency_paths to a list containing the absolute disk path of the file \
+  being revised, so the Coder reads the existing implementation before overwriting it.
+- Do NOT invent new files. Every target_file must appear in the provided file registry.
+- Assign task_ids with a "rev{N}_" prefix where N is the revision number, \
+  e.g. "rev1_task_001".
+- interface_refs may be [] if the interface contract is unchanged.
+- Return ONLY a raw JSON array. First char `[`, last char `]`.
+
+Each entry must have exactly these keys:
+{
+  "task_id":          string,
+  "target_file":      string,
+  "description":      string,
+  "interface_refs":   [string],
+  "dependency_paths": [string]
+}\
+"""
+
+
+def run_architect_revision(
+    synthesis_report_path: str,
+    architect_spec_path: str,
+    shared_deps_path: str,
+    generated_file_paths: list[str],
+    revision_number: int,
+) -> list[TaskEntry]:
+    """Produce targeted revision tasks from a synthesis report.
+
+    Reads SYNTHESIS_REPORT.md and the stable context files, then asks Claude
+    to create the smallest possible set of TaskEntry objects covering only the
+    files implicated by blocking issues. Does not re-queue files that passed.
+
+    Args:
+        synthesis_report_path: Absolute path to SYNTHESIS_REPORT.md on disk.
+        architect_spec_path: Absolute path to ARCHITECT_SPEC.md on disk.
+        shared_deps_path: Absolute path to shared_dependencies.md on disk.
+        generated_file_paths: Absolute paths of all files written so far.
+        revision_number: Current revision cycle number (1 or 2).
+
+    Returns:
+        List of TaskEntry objects for the targeted revision. May be empty if
+        the model finds no actionable tasks after filtering hallucinated files.
+
+    Raises:
+        anthropic.APIError: If the Claude API call fails.
+        json.JSONDecodeError: If the response is not valid JSON.
+        ValueError: If the response fails task key validation.
+        OSError: If synthesis_report_path cannot be read.
+    """
+    synthesis_content = Path(synthesis_report_path).read_text(encoding="utf-8")
+
+    spec_content = ""
+    if architect_spec_path:
+        try:
+            spec_content = Path(architect_spec_path).read_text(encoding="utf-8")
+        except OSError:
+            logger.warning("run_architect_revision: could not read spec at %s", architect_spec_path)
+
+    shared_deps_content = ""
+    try:
+        shared_deps_content = Path(shared_deps_path).read_text(encoding="utf-8")
+    except OSError:
+        logger.warning("run_architect_revision: could not read shared_deps at %s", shared_deps_path)
+
+    # Build registry of relative names so the model knows what files exist.
+    registry_lines = [Path(p).name for p in generated_file_paths]
+    file_registry = "\n".join(registry_lines) if registry_lines else "(none)"
+
+    user_prompt = (
+        f"## Synthesis Report (Revision {revision_number})\n\n"
+        f"{synthesis_content}\n\n"
+        f"## Architect Spec (for context)\n\n"
+        f"{spec_content}\n\n"
+        f"## Shared Dependencies (for context)\n\n"
+        f"{shared_deps_content}\n\n"
+        f"## Generated File Registry (ONLY these files may be assigned tasks)\n\n"
+        f"{file_registry}\n\n"
+        "Produce revision tasks now. Return ONLY the raw JSON array."
+    )
+
+    raw_json = _call_claude(SYSTEM_PROMPT_REVISION, user_prompt, max_tokens=2048)
+    cleaned = _strip_markdown_fence(raw_json, "json")
+
+    try:
+        tasks = _parse_task_queue_json(cleaned)
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.error(
+            "run_architect_revision: parse failed for revision %d: %s\nRaw: %s",
+            revision_number,
+            exc,
+            cleaned[:400],
+        )
+        raise
+
+    # Filter tasks referencing files that don't exist to guard against hallucination.
+    known_names = {Path(p).name for p in generated_file_paths}
+    filtered: list[TaskEntry] = []
+    for task in tasks:
+        target_name = Path(task["target_file"]).name
+        if target_name in known_names:
+            filtered.append(task)
+        else:
+            logger.warning(
+                "run_architect_revision: dropping task %s — target_file %r not in registry",
+                task["task_id"],
+                task["target_file"],
+            )
+
+    logger.info(
+        "run_architect_revision: produced %d revision tasks for revision %d",
+        len(filtered),
+        revision_number,
+    )
+    return filtered
 
 
 if __name__ == "__main__":

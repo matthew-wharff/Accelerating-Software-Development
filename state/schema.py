@@ -40,7 +40,7 @@ class TaskLogEntry(TypedDict):
     Attributes:
         task_id: Matches the corresponding TaskEntry.task_id.
         task_name: Human-readable name, e.g. "Implement UserModel".
-        status: One of "complete", "failed", or "in_progress".
+        status: One of "complete", "failed", "in_progress", or "pending_evaluation".
         file_path: Absolute path to the generated file on disk.
         interface_signature: Extracted public interface only (function
             signatures, class definitions) — not the full implementation.
@@ -93,6 +93,9 @@ class PipelineState(TypedDict):
             Accumulated across all Ralph Loop iterations.
         task_failure_count: Number of consecutive validation failures for the
             current task. Escalates to the Architect at 3.
+        task_correction_instructions: Correction notes set by architect_dispatch_node
+            when a task fails evaluation. Appended to the task description on Coder
+            retry. Cleared to None after a PASS or re-decomposition.
 
         e2b_output: Runtime output from the e2b sandbox execution step.
             Passed to all three critics. None until the sandbox node runs.
@@ -131,6 +134,7 @@ class PipelineState(TypedDict):
     task_log: list[TaskLogEntry]
     generated_file_paths: list[str]
     task_failure_count: int
+    task_correction_instructions: Optional[str]
 
     # Sandbox
     e2b_output: Optional[E2bOutput]
@@ -145,6 +149,7 @@ class PipelineState(TypedDict):
 
     # Synthesis
     synthesis_report_path: Optional[str]
+    has_blocking_issues: bool
 
     # Pipeline control
     revision_count: int
@@ -175,12 +180,14 @@ def default_state(project_brief: str = "") -> PipelineState:
         task_log=[],
         generated_file_paths=[],
         task_failure_count=0,
+        task_correction_instructions=None,
         e2b_output=None,
         test_feedback_path=None,
         security_feedback_path=None,
         quality_feedback_path=None,
         devops_config_paths=[],
         synthesis_report_path=None,
+        has_blocking_issues=False,
         revision_count=0,
         status="running",
     )

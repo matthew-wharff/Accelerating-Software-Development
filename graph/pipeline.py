@@ -11,15 +11,22 @@ Usage:
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import anthropic
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Send
 
 import re
 
+from agents.architect import run_architect_evaluate, run_architect_redecompose, run_architect_revision
+from agents.code_quality import run_code_quality
 from agents.coder import run_coder_task
-from agents.critic import run_critic
+from agents.devops import run_devops
+from agents.security_reviewer import run_security_reviewer
+from agents.synthesis import run_synthesis
+from agents.test_writer import run_test_writer
 from scripts.logger import get_logger
 from state.schema import PipelineState, TaskEntry, TaskLogEntry, default_state
 
@@ -28,6 +35,41 @@ SHARED_DEPS_PATH = Path(__file__).parent.parent / "context" / "shared_dependenci
 INTERFACES_PATH = Path(__file__).parent.parent / "context" / "INTERFACES.py"
 
 logger = get_logger(__name__)
+
+
+def read_synthesis_report(path: str) -> dict:
+    """Read SYNTHESIS_REPORT.md from disk and extract structured fields.
+
+    Parses the ``has_blocking_issues:`` sentinel line written by the Synthesis
+    agent. Returns a dict so the router can call this without touching state.
+    Fails safe (returns False) on missing file or missing sentinel to avoid
+    triggering unnecessary revisions.
+
+    Args:
+        path: Absolute path to SYNTHESIS_REPORT.md on disk.
+
+    Returns:
+        Dict with key ``has_blocking_issues`` (bool).
+    """
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except (OSError, FileNotFoundError):
+        logger.warning(
+            "read_synthesis_report: file not found at %s — defaulting to no blocking issues",
+            path,
+        )
+        return {"has_blocking_issues": False}
+
+    for line in text.splitlines():
+        stripped = line.strip().lower()
+        if stripped.startswith("has_blocking_issues:"):
+            value = stripped.split(":", 1)[1].strip()
+            return {"has_blocking_issues": value == "true"}
+
+    logger.warning(
+        "read_synthesis_report: sentinel line not found in %s — defaulting to False", path
+    )
+    return {"has_blocking_issues": False}
 
 
 def _project_name_slug(brief: str) -> str:
@@ -41,7 +83,7 @@ def _project_name_slug(brief: str) -> str:
         defaulting to ``"project"`` if ``brief`` is blank.
     """
     slug = re.sub(r"[^a-z0-9]+", "_", brief.lower().strip()).strip("_")
-    return (slug[:40] or "project")
+    return slug[:40] or "project"
 
 
 def coder_node(state: PipelineState) -> dict:
@@ -88,6 +130,14 @@ def coder_node(state: PipelineState) -> dict:
         "project_name": project_name,
     }
 
+    correction = state.get("task_correction_instructions")
+    if correction:
+        coder_task["description"] = (
+            coder_task["description"]
+            + f"\n\n## Correction Instructions from Architect\n\n{correction}"
+        )
+        logger.info("coder_node: applying correction for task %s", task["task_id"])
+
     # Build relevant_interfaces: pass full INTERFACES.py when refs exist.
     # TODO: filter to only the named symbols from interface_refs (optimization).
     relevant_interfaces = ""
@@ -99,7 +149,9 @@ def coder_node(state: PipelineState) -> dict:
     task_log = state.get("task_log", [])
     for dep_path in dependency_paths:
         for entry in task_log:
-            if entry["file_path"].endswith(dep_path) and entry.get("interface_signature"):
+            if entry["file_path"].endswith(dep_path) and entry.get(
+                "interface_signature"
+            ):
                 prior_sig_parts.append(f"# {dep_path}\n{entry['interface_signature']}")
                 break
     prior_signatures = "\n\n".join(prior_sig_parts)
@@ -123,13 +175,15 @@ def coder_node(state: PipelineState) -> dict:
         )
         return {"status": "failed"}
     except (ValueError, OSError) as exc:
-        logger.error("coder_node: file_writer error for %s: %s", task["target_file"], exc)
+        logger.error(
+            "coder_node: file_writer error for %s: %s", task["target_file"], exc
+        )
         return {"status": "failed"}
 
     log_entry: TaskLogEntry = {
         "task_id": task["task_id"],
         "task_name": f"Implement {task['target_file']}",
-        "status": "complete",
+        "status": "pending_evaluation",
         "file_path": file_path,
         "interface_signature": extracted_interface,
     }
@@ -139,44 +193,474 @@ def coder_node(state: PipelineState) -> dict:
     return {
         "generated_file_paths": state["generated_file_paths"] + [file_path],
         "task_log": state["task_log"] + [log_entry],
-        "current_task_index": current_index + 1,
     }
 
 
-def critic_node(state: PipelineState) -> dict:
-    """Execute the Critic agent against the most recently generated file.
+def dispatch_critics(state: PipelineState) -> list[Send]:
+    """Fan out to all three critic agents in parallel via Send API.
 
-    Reads the last path in ``state["generated_file_paths"]``, delegates to
-    ``run_critic``, and returns the feedback file path in state.
+    Each Send delivers an isolated scoped state to its target node,
+    preventing context bleed between critics.
 
     Args:
         state: The current pipeline state.
 
     Returns:
-        Partial state dict updating ``quality_feedback_path`` on success;
-        ``{"status": "failed"}`` on any error.
+        List of Send objects routing to each critic node in parallel.
     """
-    generated = state["generated_file_paths"]
+    project_name = _project_name_slug(state.get("project_brief", ""))
+    shared_deps_path = str(SHARED_DEPS_PATH)
+    interfaces_path = str(INTERFACES_PATH)
+    conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
+    generated_file_paths = state["generated_file_paths"]
 
-    if not generated:
-        logger.error("critic_node: generated_file_paths is empty — nothing to review")
-        return {"status": "failed"}
+    logger.info(
+        "dispatch_critics: fanning out to 3 critics for %d files",
+        len(generated_file_paths),
+    )
 
-    file_path = generated[-1]
-    logger.info("critic_node: reviewing %s", file_path)
+    architect_spec_path = str(
+        Path(__file__).parent.parent / "context" / "ARCHITECT_SPEC.md"
+    )
+
+    return [
+        Send(
+            "devops_node",
+            {
+                "architect_spec_path": architect_spec_path,
+                "shared_deps_path": shared_deps_path,
+                "project_name": project_name,
+            },
+        ),
+        Send(
+            "test_writer_node",
+            {
+                "generated_file_paths": generated_file_paths,
+                "interfaces_path": interfaces_path,
+                "shared_deps_path": shared_deps_path,
+                "project_name": project_name,
+            },
+        ),
+        Send(
+            "security_reviewer_node",
+            {
+                "generated_file_paths": generated_file_paths,
+                "shared_deps_path": shared_deps_path,
+                "project_name": project_name,
+            },
+        ),
+        Send(
+            "quality_reviewer_node",
+            {
+                "generated_file_paths": generated_file_paths,
+                "conventions": conventions,
+                "project_name": project_name,
+            },
+        ),
+    ]
+
+
+def test_writer_node(state: dict) -> dict:
+    """Run the Test Writer critic against all generated files.
+
+    Args:
+        state: Scoped dict from Send — contains generated_file_paths,
+            interfaces_path, shared_deps_path, project_name.
+
+    Returns:
+        Partial state dict updating ``test_feedback_path``.
+    """
+    t0 = time.perf_counter()
+    logger.info("test_writer_node: starting")
+    try:
+        written_paths = run_test_writer(
+            generated_file_paths=state["generated_file_paths"],
+            interfaces_path=state["interfaces_path"],
+            shared_deps_path=state["shared_deps_path"],
+            project_name=state["project_name"],
+        )
+    except Exception as exc:
+        logger.error("test_writer_node: failed: %s", exc)
+        return {"test_feedback_path": None}
+    summary_path = next(
+        (p for p in written_paths if "TEST_SUMMARY" in p),
+        written_paths[-1] if written_paths else None,
+    )
+    logger.info(
+        "test_writer_node: done in %.2fs — %s", time.perf_counter() - t0, summary_path
+    )
+    return {"test_feedback_path": summary_path}
+
+
+def security_reviewer_node(state: dict) -> dict:
+    """Run the Security Reviewer critic against all generated files.
+
+    Args:
+        state: Scoped dict from Send — contains generated_file_paths,
+            shared_deps_path, project_name.
+
+    Returns:
+        Partial state dict updating ``security_feedback_path``.
+    """
+    t0 = time.perf_counter()
+    logger.info("security_reviewer_node: starting")
+    try:
+        report_path = run_security_reviewer(
+            generated_file_paths=state["generated_file_paths"],
+            shared_deps_path=state["shared_deps_path"],
+            project_name=state["project_name"],
+        )
+    except Exception as exc:
+        logger.error("security_reviewer_node: failed: %s", exc)
+        return {"security_feedback_path": None}
+    logger.info(
+        "security_reviewer_node: done in %.2fs — %s",
+        time.perf_counter() - t0,
+        report_path,
+    )
+    return {"security_feedback_path": report_path}
+
+
+def quality_reviewer_node(state: dict) -> dict:
+    """Run the Code Quality critic against all generated files.
+
+    Args:
+        state: Scoped dict from Send — contains generated_file_paths,
+            conventions, project_name.
+
+    Returns:
+        Partial state dict updating ``quality_feedback_path``.
+    """
+    t0 = time.perf_counter()
+    logger.info("quality_reviewer_node: starting")
+    try:
+        report_path = run_code_quality(
+            generated_file_paths=state["generated_file_paths"],
+            conventions=state["conventions"],
+            project_name=state["project_name"],
+        )
+    except Exception as exc:
+        logger.error("quality_reviewer_node: failed: %s", exc)
+        return {"quality_feedback_path": None}
+    logger.info(
+        "quality_reviewer_node: done in %.2fs — %s",
+        time.perf_counter() - t0,
+        report_path,
+    )
+    return {"quality_feedback_path": report_path}
+
+
+def devops_node(state: dict) -> dict:
+    """Run the DevOps agent to generate infrastructure files.
+
+    Args:
+        state: Scoped dict from Send — contains architect_spec_path,
+            shared_deps_path, project_name.
+
+    Returns:
+        Partial state dict updating ``devops_config_paths``.
+    """
+    t0 = time.perf_counter()
+    logger.info("devops_node: starting")
+    try:
+        written_paths = run_devops(
+            architect_spec_path=state["architect_spec_path"],
+            shared_deps_path=state["shared_deps_path"],
+            project_name=state["project_name"],
+        )
+    except Exception as exc:
+        logger.error("devops_node: failed: %s", exc)
+        return {"devops_config_paths": []}
+    logger.info(
+        "devops_node: done in %.2fs — %d files written",
+        time.perf_counter() - t0,
+        len(written_paths),
+    )
+    return {"devops_config_paths": written_paths}
+
+
+def architect_dispatch_node(state: PipelineState) -> dict:
+    """Evaluate the last Coder result and prepare the next task dispatch.
+
+    On first entry (task_log empty) the evaluation step is skipped and the node
+    simply signals readiness for the first Coder dispatch.
+
+    Evaluation outcomes:
+    - PASS: advances current_task_index, resets failure counter, clears corrections.
+    - FAIL (failure_count < 3): increments failure counter, sets correction instructions.
+    - FAIL (failure_count reaches 3): calls run_architect_redecompose to split the
+      failing task into 2 subtasks, splices them into task_queue at current_index,
+      resets failure counter. Gracefully degrades on redecompose errors.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict. Never raises — evaluation errors are treated as FAIL.
+    """
+    task_queue = state["task_queue"]
+    task_log = state["task_log"]
+    current_index = state["current_task_index"]
+    failure_count = state["task_failure_count"]
+
+    if not task_log:
+        logger.info("architect_dispatch_node: first run — skipping evaluation")
+        return {"task_correction_instructions": None}
+
+    current_task: TaskEntry = task_queue[current_index]
+    last_entry = task_log[-1]
 
     try:
-        conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
-        feedback_path = run_critic(file_path, conventions)
-    except FileNotFoundError as exc:
-        logger.error("critic_node: source file not found: %s", exc)
-        return {"status": "failed"}
-    except anthropic.APIError as exc:
-        logger.error("critic_node: Claude API error reviewing %s: %s", file_path, exc)
+        passed, correction_notes = run_architect_evaluate(
+            task=current_task,
+            interface_signature=last_entry["interface_signature"],
+            spec_path=state.get("architect_spec_path") or "",
+            shared_deps_path=str(SHARED_DEPS_PATH),
+        )
+    except Exception as exc:
+        logger.error(
+            "architect_dispatch_node: evaluate raised %s — treating as FAIL: %s",
+            type(exc).__name__,
+            exc,
+        )
+        passed = False
+        correction_notes = (
+            "Evaluation call failed; please re-implement the file from scratch."
+        )
+
+    if passed:
+        logger.info(
+            "architect_dispatch_node: task %s PASSED — advancing to index %d",
+            current_task["task_id"],
+            current_index + 1,
+        )
+        updated_log = list(task_log)
+        updated_log[-1] = {**last_entry, "status": "complete"}
+        return {
+            "current_task_index": current_index + 1,
+            "task_failure_count": 0,
+            "task_correction_instructions": None,
+            "task_log": updated_log,
+        }
+
+    new_failure_count = failure_count + 1
+    logger.warning(
+        "architect_dispatch_node: task %s FAILED (failure_count now %d): %s",
+        current_task["task_id"],
+        new_failure_count,
+        correction_notes,
+    )
+
+    if new_failure_count < 3:
+        return {
+            "task_failure_count": new_failure_count,
+            "task_correction_instructions": correction_notes,
+        }
+
+    logger.warning(
+        "architect_dispatch_node: escalating task %s after %d failures — re-decomposing",
+        current_task["task_id"],
+        new_failure_count,
+    )
+
+    try:
+        subtasks = run_architect_redecompose(
+            failing_task=current_task,
+            spec_path=state.get("architect_spec_path") or "",
+            shared_deps_path=str(SHARED_DEPS_PATH),
+        )
+    except Exception as exc:
+        logger.error(
+            "architect_dispatch_node: redecompose failed for %s: %s — resetting failure count",
+            current_task["task_id"],
+            exc,
+        )
+        return {
+            "task_failure_count": 0,
+            "task_correction_instructions": None,
+        }
+
+    new_queue = list(task_queue)
+    new_queue[current_index : current_index + 1] = subtasks
+    logger.info(
+        "architect_dispatch_node: inserted subtasks [%s, %s] at index %d",
+        subtasks[0]["task_id"],
+        subtasks[1]["task_id"],
+        current_index,
+    )
+    return {
+        "task_queue": new_queue,
+        "task_failure_count": 0,
+        "task_correction_instructions": None,
+    }
+
+
+def synthesis_node(state: PipelineState) -> dict:
+    """Run the Synthesis agent to consolidate critic reports.
+
+    Reads the three critic report paths from state, calls run_synthesis to
+    produce a single SYNTHESIS_REPORT.md in /context/, and stores the path.
+    Raw critic outputs never flow beyond this node.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict updating ``synthesis_report_path`` and ``revision_count``
+        if blocking issues require a revision cycle.
+    """
+    t0 = time.perf_counter()
+    logger.info("synthesis_node: consolidating critic feedback")
+    try:
+        report_path, has_blocking = run_synthesis(
+            test_feedback_path=state.get("test_feedback_path"),
+            security_feedback_path=state.get("security_feedback_path"),
+            quality_feedback_path=state.get("quality_feedback_path"),
+        )
+    except Exception as exc:
+        logger.error("synthesis_node: failed: %s", exc)
+        return {"synthesis_report_path": None}
+
+    logger.info(
+        "synthesis_node: done in %.2fs — blocking=%s path=%s",
+        time.perf_counter() - t0,
+        has_blocking,
+        report_path,
+    )
+    return {
+        "synthesis_report_path": report_path,
+        "has_blocking_issues": has_blocking,
+    }
+
+
+def should_revise(state: PipelineState) -> str:
+    """Route after synthesis: targeted revision or end.
+
+    Reads SYNTHESIS_REPORT.md from disk via read_synthesis_report() rather than
+    trusting the boolean already in state, so the decision is grounded in the
+    file that was actually written.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        "architect_revision" if blocking issues remain and revision budget allows,
+        "end" otherwise.
+    """
+    report_path = state.get("synthesis_report_path")
+    revision_count = state.get("revision_count", 0)
+
+    if not report_path:
+        logger.warning("should_revise: synthesis_report_path is None — routing to end")
+        return "end"
+
+    report = read_synthesis_report(report_path)
+    has_blocking = report["has_blocking_issues"]
+
+    if has_blocking and revision_count < 2:
+        logger.info(
+            "should_revise: blocking issues found, revision_count=%d — routing to architect_revision",
+            revision_count,
+        )
+        return "architect_revision"
+
+    logger.info(
+        "should_revise: routing to end (has_blocking=%s, revision_count=%d)",
+        has_blocking,
+        revision_count,
+    )
+    return "end"
+
+
+def architect_revision_node(state: PipelineState) -> dict:
+    """Generate targeted revision tasks from the synthesis report.
+
+    Calls run_architect_revision() to produce a minimal task list covering only
+    the files implicated by blocking issues. Replaces task_queue entirely and
+    resets the coder loop to index 0. Increments revision_count here — not in
+    the coder and not in synthesis.
+
+    generated_file_paths is intentionally NOT reset: critics need those paths
+    on the next pass, and the coder overwrites specific files in-place.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict updating task_queue, current_task_index,
+        revision_count, task_failure_count, and task_correction_instructions.
+        Returns {"status": "failed"} on unrecoverable error.
+    """
+    revision_number = state.get("revision_count", 0) + 1
+    report_path = state.get("synthesis_report_path", "")
+
+    logger.info(
+        "architect_revision_node: starting revision %d from %s",
+        revision_number,
+        report_path,
+    )
+
+    try:
+        revision_tasks = run_architect_revision(
+            synthesis_report_path=report_path,
+            architect_spec_path=state.get("architect_spec_path") or "",
+            shared_deps_path=str(SHARED_DEPS_PATH),
+            generated_file_paths=state.get("generated_file_paths", []),
+            revision_number=revision_number,
+        )
+    except Exception as exc:
+        logger.error("architect_revision_node: run_architect_revision failed: %s", exc)
         return {"status": "failed"}
 
-    logger.info("critic_node: feedback written to %s", feedback_path)
-    return {"quality_feedback_path": feedback_path}
+    if not revision_tasks:
+        logger.warning(
+            "architect_revision_node: no revision tasks produced — advancing with empty queue"
+        )
+
+    logger.info(
+        "architect_revision_node: queued %d revision tasks for revision %d",
+        len(revision_tasks),
+        revision_number,
+    )
+
+    return {
+        "task_queue": revision_tasks,
+        "current_task_index": 0,
+        "revision_count": revision_number,
+        "task_failure_count": 0,
+        "task_correction_instructions": None,
+    }
+
+
+def e2b_node(state: PipelineState) -> dict:
+    """Stub for the e2b sandbox execution node.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict with status "running".
+    """
+    logger.info("e2b_node: stub — sandbox execution not yet implemented")
+    return {"status": "running"}
+
+
+def _route_after_architect_dispatch(state: PipelineState) -> str:
+    """Route after architect_dispatch_node: loop to coder or exit to e2b.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        "coder" if tasks remain, "e2b" if queue is exhausted.
+    """
+    if state["current_task_index"] >= len(state["task_queue"]):
+        logger.info(
+            "architect_dispatch: queue exhausted at index %d — routing to e2b",
+            state["current_task_index"],
+        )
+        return "e2b"
+    return "coder"
 
 
 # ---------------------------------------------------------------------------
@@ -184,11 +668,43 @@ def critic_node(state: PipelineState) -> dict:
 # ---------------------------------------------------------------------------
 
 _builder = StateGraph(PipelineState)
+_builder.add_node("architect_dispatch", architect_dispatch_node)
 _builder.add_node("coder", coder_node)
-_builder.add_node("critic", critic_node)
-_builder.add_edge(START, "coder")
-_builder.add_edge("coder", "critic")
-_builder.add_edge("critic", END)
+_builder.add_node("e2b", e2b_node)
+_builder.add_node("test_writer_node", test_writer_node)
+_builder.add_node("security_reviewer_node", security_reviewer_node)
+_builder.add_node("quality_reviewer_node", quality_reviewer_node)
+_builder.add_node("devops_node", devops_node)
+_builder.add_node("synthesis", synthesis_node)
+_builder.add_node("architect_revision", architect_revision_node)
+
+_builder.add_edge(START, "architect_dispatch")
+_builder.add_conditional_edges(
+    "architect_dispatch",
+    _route_after_architect_dispatch,
+    {"coder": "coder", "e2b": "e2b"},
+)
+_builder.add_edge("coder", "architect_dispatch")
+_builder.add_conditional_edges(
+    "e2b",
+    dispatch_critics,
+    [
+        "test_writer_node",
+        "security_reviewer_node",
+        "quality_reviewer_node",
+        "devops_node",
+    ],
+)
+_builder.add_edge("test_writer_node", "synthesis")
+_builder.add_edge("security_reviewer_node", "synthesis")
+_builder.add_edge("quality_reviewer_node", "synthesis")
+_builder.add_edge("devops_node", "synthesis")
+_builder.add_conditional_edges(
+    "synthesis",
+    should_revise,
+    {"architect_revision": "architect_revision", "end": END},
+)
+_builder.add_edge("architect_revision", "architect_dispatch")
 
 app = _builder.compile()
 
@@ -206,10 +722,10 @@ if __name__ == "__main__":
             task_id="task_001",
             target_file="hello_pipeline.py",
             description=(
-               # "Write a Python module with a single function `greet(name: str) -> str` "
-               # "that returns the string 'Hello, {name}!'. "
-               # "Include a Google-style docstring and type annotations."
-               "Build a Python REST API for a task manager with SQLite. Include endpoints for create, read, update, delete tasks. Use FastAPI and include basic input validation."
+                # "Write a Python module with a single function `greet(name: str) -> str` "
+                # "that returns the string 'Hello, {name}!'. "
+                # "Include a Google-style docstring and type annotations."
+                "Build a Python REST API for a task manager with SQLite. Include endpoints for create, read, update, delete tasks. Use FastAPI and include basic input validation."
             ),
             interface_refs=[],
             dependency_paths=[],
@@ -221,17 +737,23 @@ if __name__ == "__main__":
 
     logger.info("Pipeline status   : %s", final_state["status"])
     logger.info("Generated files   : %s", final_state["generated_file_paths"])
-    logger.info("Quality feedback  : %s", final_state["quality_feedback_path"])
+    logger.info("Test feedback     : %s", final_state.get("test_feedback_path"))
+    logger.info("Security feedback : %s", final_state.get("security_feedback_path"))
+    logger.info("Quality feedback  : %s", final_state.get("quality_feedback_path"))
     logger.info("Task log          : %s", final_state["task_log"])
 
     assert final_state["generated_file_paths"], "generated_file_paths must not be empty"
     for p in final_state["generated_file_paths"]:
         assert Path(p).exists(), f"Expected generated file on disk: {p}"
 
-    if final_state["quality_feedback_path"]:
-        assert Path(final_state["quality_feedback_path"]).exists(), (
-            f"Expected feedback file on disk: {final_state['quality_feedback_path']}"
-        )
+    for field in (
+        "test_feedback_path",
+        "security_feedback_path",
+        "quality_feedback_path",
+    ):
+        path = final_state.get(field)
+        if path:
+            assert Path(path).exists(), f"Expected {field} on disk: {path}"
 
     logger.info("All assertions passed — architecture proof complete.")
     sys.exit(0)
