@@ -78,6 +78,14 @@ class PipelineState(TypedDict):
         project_brief: The original plain-English project description.
         clarified_brief: The brief after the Spec Clarifier has processed it.
 
+        run_dir: Absolute path to this run's isolated workspace directory,
+            e.g. ``/abs/path/to/output/2026-04-20T14-32-00-build-todo-app``.
+            Set by workspace_node at pipeline start; empty string until then.
+        shared_deps_path: Absolute path to this run's shared_dependencies.md,
+            at ``run_dir/context/shared_dependencies.md``.
+        task_queue_path: Absolute path to this run's task_queue.json,
+            at ``run_dir/context/task_queue.json``.
+
         architect_spec_path: Absolute path to architect_spec.md on disk.
             Set by the Architect node; None until then.
         interface_definitions_path: Absolute path to interface_definitions.md
@@ -125,6 +133,11 @@ class PipelineState(TypedDict):
     # Input
     project_brief: str
     clarified_brief: str
+
+    # Workspace — set by workspace_node at pipeline start
+    run_dir: str
+    shared_deps_path: str
+    task_queue_path: str
 
     # Architect artifacts — paths only, never content
     architect_spec_path: Optional[str]
@@ -178,6 +191,9 @@ def default_state(project_brief: str = "") -> PipelineState:
     return PipelineState(
         project_brief=project_brief,
         clarified_brief="",
+        run_dir="",
+        shared_deps_path="",
+        task_queue_path="",
         architect_spec_path=None,
         interface_definitions_path=None,
         task_queue=[],

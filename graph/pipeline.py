@@ -34,6 +34,7 @@ from agents.security_reviewer import run_security_reviewer
 from agents.synthesis import run_synthesis
 from agents.test_writer import run_test_writer
 from scripts.logger import get_logger
+from scripts.workspace import create_run_workspace
 import config
 from state.schema import (
     E2bOutput,
@@ -818,10 +819,28 @@ def _route_after_architect_dispatch(state: PipelineState) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Workspace bootstrap node
+# ---------------------------------------------------------------------------
+
+
+def workspace_node(state: PipelineState) -> dict:
+    """Create the run workspace and populate path fields in state."""
+    run_dir = create_run_workspace(state["project_brief"])
+    return {
+        "run_dir": str(run_dir),
+        "shared_deps_path": str(run_dir / "context" / "shared_dependencies.md"),
+        "task_queue_path": str(run_dir / "context" / "task_queue.json"),
+        "architect_spec_path": str(run_dir / "context" / "architect_spec.md"),
+        "synthesis_report_path": str(run_dir / "context" / "SYNTHESIS_REPORT.md"),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Graph construction — compiled at module level for importability
 # ---------------------------------------------------------------------------
 
 _builder = StateGraph(PipelineState)
+_builder.add_node("workspace", workspace_node)
 _builder.add_node("architect_dispatch", architect_dispatch_node)
 _builder.add_node("coder", coder_node)
 _builder.add_node("e2b", e2b_node)
@@ -833,7 +852,8 @@ _builder.add_node("synthesis", synthesis_node)
 _builder.add_node("architect_revision", architect_revision_node)
 _builder.add_node("github", github_node)
 
-_builder.add_edge(START, "architect_dispatch")
+_builder.add_edge(START, "workspace")
+_builder.add_edge("workspace", "architect_dispatch")
 _builder.add_conditional_edges(
     "architect_dispatch",
     _route_after_architect_dispatch,
