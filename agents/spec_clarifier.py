@@ -8,7 +8,6 @@ from scripts.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path(__file__).parent.parent / "output"
 MODEL = "claude-sonnet-4-20250514"
 SYSTEM_PROMPT = (
     "You are a senior software architect helping to clarify a project brief before any code is written. "
@@ -21,22 +20,26 @@ SYSTEM_PROMPT = (
 )
 
 
-def run_spec_clarifier(project_brief: str, conventions: str) -> dict[str, list[str]]:
+def run_spec_clarifier(
+    project_brief: str, conventions: str, run_dir: str
+) -> dict:
     """Interrogate a project brief and return structured clarifying questions.
 
     Calls claude-sonnet-4-20250514 to identify the 3–5 questions that would most
     reduce ambiguity if answered, prioritising hard-to-change technical decisions.
-    Writes a markdown summary to /output/spec_clarifications.md. For the MVP,
+    Writes clarified_brief.md and spec_clarifications.md into run_dir. For the MVP,
     answers are hardcoded placeholders — wire up real user input in a later task.
 
     Args:
         project_brief: Plain-English description of the project to be built.
         conventions: Content of CONVENTIONS.md, injected on every call.
+        run_dir: Absolute path to the run workspace created by workspace_node.
 
     Returns:
         Dict with keys:
             questions (list[str]): 3–5 clarifying questions from Claude.
             answers (list[str]): Placeholder answers, one per question.
+            clarified_brief_path (str): Absolute path to clarified_brief.md.
 
     Raises:
         anthropic.APIError: If the Claude API call fails.
@@ -90,12 +93,29 @@ def run_spec_clarifier(project_brief: str, conventions: str) -> dict[str, list[s
 
     answers: list[str] = ["[placeholder] To be determined"] * len(questions)
 
-    output_path = OUTPUT_DIR / "spec_clarifications.md"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["# Spec Clarifications\n"]
-    for i, (q, a) in enumerate(zip(questions, answers), start=1):
-        lines.append(f"## Q{i}: {q}\n\n**Answer:** {a}\n")
-    output_path.write_text("\n".join(lines), encoding="utf-8")
-    logger.info("Spec clarifier wrote clarifications: %s", output_path)
+    run_dir_path = Path(run_dir)
 
-    return {"questions": questions, "answers": answers}
+    # Write Q&A clarifications to reports/
+    clarifications_path = run_dir_path / "reports" / "spec_clarifications.md"
+    clarifications_path.parent.mkdir(parents=True, exist_ok=True)
+    qa_lines = ["# Spec Clarifications\n"]
+    for i, (q, a) in enumerate(zip(questions, answers), start=1):
+        qa_lines.append(f"## Q{i}: {q}\n\n**Answer:** {a}\n")
+    clarifications_path.write_text("\n".join(qa_lines), encoding="utf-8")
+    logger.info("Spec clarifier wrote clarifications: %s", clarifications_path)
+
+    # Assemble and write the clarified brief to context/
+    brief_lines = [
+        f"# Clarified Project Brief\n\n## Original Brief\n\n{project_brief}\n\n## Clarifications\n"
+    ]
+    for i, (q, a) in enumerate(zip(questions, answers), start=1):
+        brief_lines.append(f"\n**Q{i}: {q}**\nAnswer: {a}\n")
+    clarified_brief_path = run_dir_path / "context" / "clarified_brief.md"
+    clarified_brief_path.write_text("\n".join(brief_lines), encoding="utf-8")
+    logger.info("Spec clarifier wrote clarified brief: %s", clarified_brief_path)
+
+    return {
+        "questions": questions,
+        "answers": answers,
+        "clarified_brief_path": str(clarified_brief_path),
+    }

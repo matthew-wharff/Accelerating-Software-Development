@@ -90,17 +90,17 @@ def _parse_devops_json(raw: str) -> dict[str, str]:
 def run_devops(
     architect_spec_path: str,
     shared_deps_path: str,
-    project_name: str,
+    run_dir: str,
 ) -> list[str]:
     """Generate infrastructure files from the architecture spec and dependency manifest.
 
     Reads ARCHITECT_SPEC.md and shared_dependencies.md from disk, makes a single
-    Claude call, and writes four files into /output/{project_name}/.
+    Claude call, and writes four files into run_dir/code/.
 
     Args:
-        architect_spec_path: Absolute or repo-relative path to ARCHITECT_SPEC.md.
-        shared_deps_path: Absolute or repo-relative path to shared_dependencies.md.
-        project_name: Slug used as the output subdirectory name.
+        architect_spec_path: Absolute path to ARCHITECT_SPEC.md.
+        shared_deps_path: Absolute path to shared_dependencies.md.
+        run_dir: Absolute path to the run workspace.
 
     Returns:
         List of absolute paths to the four written files.
@@ -133,7 +133,7 @@ def run_devops(
         "Generate the four infrastructure files described in the system prompt."
     )
 
-    logger.info("run_devops: calling %s for project '%s'", MODEL, project_name)
+    logger.info("run_devops: calling %s for run_dir '%s'", MODEL, run_dir)
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     message = client.messages.create(
         model=MODEL,
@@ -147,7 +147,7 @@ def run_devops(
     files = _parse_devops_json(raw)
 
     try:
-        written_paths = write_project_files(files, project_name)
+        written_paths = write_project_files(files, Path(run_dir) / "code")
     except Exception as exc:
         logger.error("run_devops: failed to write output files: %s", exc)
         raise

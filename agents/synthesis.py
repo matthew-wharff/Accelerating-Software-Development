@@ -17,7 +17,6 @@ from scripts.logger import get_logger
 
 logger = get_logger(__name__)
 
-CONTEXT_DIR = Path(__file__).parent.parent / "context"
 MODEL = "claude-sonnet-4-20250514"
 
 _SYSTEM_PROMPT = (
@@ -91,11 +90,12 @@ def run_synthesis(
     test_feedback_path: str | None,
     security_feedback_path: str | None,
     quality_feedback_path: str | None,
+    out_path: str,
 ) -> tuple[str, bool]:
     """Consolidate critic reports into a single SYNTHESIS_REPORT.md.
 
     Reads each report file from disk, calls Claude Sonnet to de-duplicate and
-    prioritize findings, then writes the result to /context/SYNTHESIS_REPORT.md.
+    prioritize findings, then writes the result to out_path (pre-set by workspace_node).
     Raw critic outputs never leave this function — only the synthesis path is
     returned.
 
@@ -103,6 +103,7 @@ def run_synthesis(
         test_feedback_path: Absolute path to the test writer report, or None.
         security_feedback_path: Absolute path to the security reviewer report, or None.
         quality_feedback_path: Absolute path to the code quality report, or None.
+        out_path: Absolute path where SYNTHESIS_REPORT.md should be written.
 
     Returns:
         A tuple of (absolute path to SYNTHESIS_REPORT.md as str, has_blocking_issues bool).
@@ -136,9 +137,9 @@ def run_synthesis(
 
     has_blocking = _parse_blocking(raw)
 
-    out_path = CONTEXT_DIR / "SYNTHESIS_REPORT.md"
+    out_path_obj = Path(out_path)
     try:
-        out_path.write_text(raw, encoding="utf-8")
+        out_path_obj.write_text(raw, encoding="utf-8")
     except OSError as e:
         logger.error("synthesis: failed to write SYNTHESIS_REPORT.md: %s", e)
         raise
@@ -148,4 +149,4 @@ def run_synthesis(
         out_path,
         has_blocking,
     )
-    return str(out_path), has_blocking
+    return out_path, has_blocking

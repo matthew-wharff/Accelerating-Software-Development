@@ -142,23 +142,21 @@ def run_test_writer(
     generated_file_paths: list[str],
     interfaces_path: str,
     shared_deps_path: str,
-    project_name: str,
+    run_dir: str,
     e2b_output: dict | None = None,
 ) -> list[str]:
     """Generate pytest test files for each generated source file.
 
     Reads each source file from disk, calls claude-haiku-4-5-20251001 once per
     file, parses a JSON response containing test file content, and writes all
-    test files to /output/{project_name}/tests/. Also writes a summary markdown
-    file at /output/{project_name}/tests/TEST_SUMMARY.md. File contents are
-    never stored in LangGraph state.
+    test files to run_dir/code/tests/. Also writes a summary markdown file at
+    run_dir/code/tests/TEST_SUMMARY.md. File contents are never stored in LangGraph state.
 
     Args:
         generated_file_paths: Absolute paths to the Coder-produced source files.
         interfaces_path: Absolute path to INTERFACES.py on disk.
         shared_deps_path: Absolute path to shared_dependencies.md on disk.
-        project_name: Output subdirectory; test files land in
-            /output/{project_name}/tests/.
+        run_dir: Absolute path to the run workspace.
 
     Returns:
         List of absolute paths to every file written, including TEST_SUMMARY.md.
@@ -173,8 +171,8 @@ def run_test_writer(
         raise ValueError("generated_file_paths is empty — nothing to test")
 
     logger.info(
-        "test_writer: starting for project '%s', %d source file(s)",
-        project_name,
+        "test_writer: starting for run_dir '%s', %d source file(s)",
+        run_dir,
         len(generated_file_paths),
     )
 
@@ -292,17 +290,17 @@ def run_test_writer(
         )
 
     try:
-        written_paths = write_project_files(accumulated_tests, project_name)
+        written_paths = write_project_files(accumulated_tests, Path(run_dir) / "code")
     except (ValueError, OSError) as e:
         logger.error(
-            "test_writer: file_writer failed for project '%s': %s", project_name, e
+            "test_writer: file_writer failed for run_dir '%s': %s", run_dir, e
         )
         raise
 
     logger.info(
-        "test_writer: wrote %d file(s) for project '%s'",
+        "test_writer: wrote %d file(s) to run_dir '%s'",
         len(written_paths),
-        project_name,
+        run_dir,
     )
     return written_paths
 

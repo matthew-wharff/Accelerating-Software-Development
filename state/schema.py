@@ -76,7 +76,8 @@ class PipelineState(TypedDict):
 
     Attributes:
         project_brief: The original plain-English project description.
-        clarified_brief: The brief after the Spec Clarifier has processed it.
+        clarified_brief_path: Absolute path to clarified_brief.md on disk.
+            Written by the Spec Clarifier; empty string until that node runs.
 
         run_dir: Absolute path to this run's isolated workspace directory,
             e.g. ``/abs/path/to/output/2026-04-20T14-32-00-build-todo-app``.
@@ -88,8 +89,8 @@ class PipelineState(TypedDict):
 
         architect_spec_path: Absolute path to architect_spec.md on disk.
             Set by the Architect node; None until then.
-        interface_definitions_path: Absolute path to interface_definitions.md
-            on disk. Set by the Architect; None until then.
+        interfaces_path: Absolute path to INTERFACES.py on disk.
+            Set by workspace_node; populated with content by the Architect.
         task_queue: Topologically ordered list of coding tasks produced by
             the Architect. Files with no dependencies come first.
 
@@ -132,7 +133,7 @@ class PipelineState(TypedDict):
 
     # Input
     project_brief: str
-    clarified_brief: str
+    clarified_brief_path: str
 
     # Workspace — set by workspace_node at pipeline start
     run_dir: str
@@ -141,7 +142,7 @@ class PipelineState(TypedDict):
 
     # Architect artifacts — paths only, never content
     architect_spec_path: Optional[str]
-    interface_definitions_path: Optional[str]
+    interfaces_path: Optional[str]
     task_queue: list[TaskEntry]
 
     # Coder progress
@@ -190,12 +191,12 @@ def default_state(project_brief: str = "") -> PipelineState:
     """
     return PipelineState(
         project_brief=project_brief,
-        clarified_brief="",
+        clarified_brief_path="",
         run_dir="",
         shared_deps_path="",
         task_queue_path="",
         architect_spec_path=None,
-        interface_definitions_path=None,
+        interfaces_path=None,
         task_queue=[],
         current_task_index=0,
         task_log=[],

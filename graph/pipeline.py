@@ -45,8 +45,6 @@ from state.schema import (
 )
 
 CONVENTIONS_PATH = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
-SHARED_DEPS_PATH = Path(__file__).parent.parent / "context" / "shared_dependencies.md"
-INTERFACES_PATH = Path(__file__).parent.parent / "context" / "INTERFACES.py"
 
 logger = get_logger(__name__)
 
@@ -132,7 +130,6 @@ def coder_node(state: PipelineState) -> dict:
         "coder_node: starting task %s (%s)", task["task_id"], task["target_file"]
     )
 
-    project_name = _project_name_slug(state.get("project_brief", ""))
     interface_refs = task.get("interface_refs", [])
     dependency_paths = task.get("dependency_paths", [])
 
@@ -142,7 +139,6 @@ def coder_node(state: PipelineState) -> dict:
         "description": task["description"],
         "interface_refs": interface_refs,
         "dependency_paths": dependency_paths,
-        "project_name": project_name,
     }
 
     correction = state.get("task_correction_instructions")
@@ -156,8 +152,9 @@ def coder_node(state: PipelineState) -> dict:
     # Build relevant_interfaces: pass full INTERFACES.py when refs exist.
     # TODO: filter to only the named symbols from interface_refs (optimization).
     relevant_interfaces = ""
-    if interface_refs and INTERFACES_PATH.exists():
-        relevant_interfaces = INTERFACES_PATH.read_text(encoding="utf-8")
+    interfaces_path = state.get("interfaces_path") or ""
+    if interface_refs and interfaces_path and Path(interfaces_path).exists():
+        relevant_interfaces = Path(interfaces_path).read_text(encoding="utf-8")
 
     # Build prior_signatures from completed task log entries this task depends on.
     prior_sig_parts: list[str] = []
@@ -173,13 +170,16 @@ def coder_node(state: PipelineState) -> dict:
 
     try:
         conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
-        shared_deps = SHARED_DEPS_PATH.read_text(encoding="utf-8")
+        shared_deps_path = state["shared_deps_path"]
+        shared_deps = Path(shared_deps_path).read_text(encoding="utf-8")
         file_path, extracted_interface = run_coder_task(
             task=coder_task,
             shared_deps=shared_deps,
+            shared_deps_path=shared_deps_path,
             relevant_interfaces=relevant_interfaces,
             prior_signatures=prior_signatures,
             conventions=conventions,
+            run_dir=Path(state["run_dir"]),
         )
     except KeyError as exc:
         logger.error("coder_node: missing required task key: %s", exc)
@@ -223,9 +223,9 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
     Returns:
         List of Send objects routing to each critic node in parallel.
     """
-    project_name = _project_name_slug(state.get("project_brief", ""))
-    shared_deps_path = str(SHARED_DEPS_PATH)
-    interfaces_path = str(INTERFACES_PATH)
+    run_dir = state["run_dir"]
+    shared_deps_path = state["shared_deps_path"]
+    interfaces_path = state.get("interfaces_path") or ""
     conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
     generated_file_paths = state["generated_file_paths"]
 
@@ -234,17 +234,13 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
         len(generated_file_paths),
     )
 
-    architect_spec_path = str(
-        Path(__file__).parent.parent / "context" / "ARCHITECT_SPEC.md"
-    )
-
     return [
         Send(
             "devops_node",
             {
-                "architect_spec_path": architect_spec_path,
+                "architect_spec_path": state.get("architect_spec_path") or "",
                 "shared_deps_path": shared_deps_path,
-                "project_name": project_name,
+                "run_dir": run_dir,
             },
         ),
         Send(
@@ -253,7 +249,7 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
                 "generated_file_paths": generated_file_paths,
                 "interfaces_path": interfaces_path,
                 "shared_deps_path": shared_deps_path,
-                "project_name": project_name,
+                "run_dir": run_dir,
                 "e2b_output": state.get("e2b_output"),
             },
         ),
@@ -262,7 +258,7 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
             {
                 "generated_file_paths": generated_file_paths,
                 "shared_deps_path": shared_deps_path,
-                "project_name": project_name,
+                "run_dir": run_dir,
                 "e2b_output": state.get("e2b_output"),
             },
         ),
@@ -271,7 +267,7 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
             {
                 "generated_file_paths": generated_file_paths,
                 "conventions": conventions,
-                "project_name": project_name,
+                "run_dir": run_dir,
                 "e2b_output": state.get("e2b_output"),
             },
         ),
@@ -283,7 +279,7 @@ def test_writer_node(state: Any) -> dict:
 
     Args:
         state: Scoped dict from Send — contains generated_file_paths,
-            interfaces_path, shared_deps_path, project_name.
+            interfaces_path, shared_deps_path, run_dir.
 
     Returns:
         Partial state dict updating ``test_feedback_path``.
@@ -295,7 +291,7 @@ def test_writer_node(state: Any) -> dict:
             generated_file_paths=state["generated_file_paths"],
             interfaces_path=state["interfaces_path"],
             shared_deps_path=state["shared_deps_path"],
-            project_name=state["project_name"],
+            run_dir=state["run_dir"],
             e2b_output=state.get("e2b_output"),
         )
     except Exception as exc:
@@ -316,7 +312,7 @@ def security_reviewer_node(state: Any) -> dict:
 
     Args:
         state: Scoped dict from Send — contains generated_file_paths,
-            shared_deps_path, project_name.
+            shared_deps_path, run_dir.
 
     Returns:
         Partial state dict updating ``security_feedback_path``.
@@ -327,7 +323,7 @@ def security_reviewer_node(state: Any) -> dict:
         report_path = run_security_reviewer(
             generated_file_paths=state["generated_file_paths"],
             shared_deps_path=state["shared_deps_path"],
-            project_name=state["project_name"],
+            run_dir=state["run_dir"],
             e2b_output=state.get("e2b_output"),
         )
     except Exception as exc:
@@ -346,7 +342,7 @@ def quality_reviewer_node(state: Any) -> dict:
 
     Args:
         state: Scoped dict from Send — contains generated_file_paths,
-            conventions, project_name.
+            conventions, run_dir.
 
     Returns:
         Partial state dict updating ``quality_feedback_path``.
@@ -357,7 +353,7 @@ def quality_reviewer_node(state: Any) -> dict:
         report_path = run_code_quality(
             generated_file_paths=state["generated_file_paths"],
             conventions=state["conventions"],
-            project_name=state["project_name"],
+            run_dir=state["run_dir"],
             e2b_output=state.get("e2b_output"),
         )
     except Exception as exc:
@@ -376,7 +372,7 @@ def devops_node(state: Any) -> dict:
 
     Args:
         state: Scoped dict from Send — contains architect_spec_path,
-            shared_deps_path, project_name.
+            shared_deps_path, run_dir.
 
     Returns:
         Partial state dict updating ``devops_config_paths``.
@@ -385,9 +381,9 @@ def devops_node(state: Any) -> dict:
     logger.info("devops_node: starting")
     try:
         written_paths = run_devops(
-            architect_spec_path=state["architect_spec_path"],
+            architect_spec_path=state.get("architect_spec_path") or "",
             shared_deps_path=state["shared_deps_path"],
-            project_name=state["project_name"],
+            run_dir=state["run_dir"],
         )
     except Exception as exc:
         logger.error("devops_node: failed: %s", exc)
@@ -436,7 +432,7 @@ def architect_dispatch_node(state: PipelineState) -> dict:
             task=current_task,
             interface_signature=last_entry["interface_signature"],
             spec_path=state.get("architect_spec_path") or "",
-            shared_deps_path=str(SHARED_DEPS_PATH),
+            shared_deps_path=state["shared_deps_path"],
         )
     except Exception as exc:
         logger.error(
@@ -488,7 +484,7 @@ def architect_dispatch_node(state: PipelineState) -> dict:
         subtasks = run_architect_redecompose(
             failing_task=current_task,
             spec_path=state.get("architect_spec_path") or "",
-            shared_deps_path=str(SHARED_DEPS_PATH),
+            shared_deps_path=state["shared_deps_path"],
         )
     except Exception as exc:
         logger.error(
@@ -537,6 +533,7 @@ def synthesis_node(state: PipelineState) -> dict:
             test_feedback_path=state.get("test_feedback_path"),
             security_feedback_path=state.get("security_feedback_path"),
             quality_feedback_path=state.get("quality_feedback_path"),
+            out_path=state["synthesis_report_path"],
         )
     except Exception as exc:
         logger.error("synthesis_node: failed: %s", exc)
@@ -625,7 +622,7 @@ def architect_revision_node(state: PipelineState) -> dict:
         revision_tasks = run_architect_revision(
             synthesis_report_path=report_path,
             architect_spec_path=state.get("architect_spec_path") or "",
-            shared_deps_path=str(SHARED_DEPS_PATH),
+            shared_deps_path=state.get("shared_deps_path", ""),
             generated_file_paths=state.get("generated_file_paths", []),
             revision_number=revision_number,
         )
@@ -755,7 +752,7 @@ def _github_node_dry_run(state: PipelineState) -> dict:
     files_to_commit = (
         state.get("generated_file_paths", []) + state.get("devops_config_paths", [])
     )
-    manifest_path = Path("output") / repo_name / "GITHUB_DRY_RUN.md"
+    manifest_path = Path(state["run_dir"]) / "GITHUB_DRY_RUN.md"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         f"# Dry run: would create repo '{repo_name}'\n\n"
@@ -830,7 +827,8 @@ def workspace_node(state: PipelineState) -> dict:
         "run_dir": str(run_dir),
         "shared_deps_path": str(run_dir / "context" / "shared_dependencies.md"),
         "task_queue_path": str(run_dir / "context" / "task_queue.json"),
-        "architect_spec_path": str(run_dir / "context" / "architect_spec.md"),
+        "architect_spec_path": str(run_dir / "context" / "ARCHITECT_SPEC.md"),
+        "interfaces_path": str(run_dir / "context" / "INTERFACES.py"),
         "synthesis_report_path": str(run_dir / "context" / "SYNTHESIS_REPORT.md"),
     }
 

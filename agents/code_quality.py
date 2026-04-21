@@ -16,7 +16,6 @@ from scripts.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path(__file__).parent.parent / "output"
 MODEL = "claude-haiku-4-5-20251001"
 
 SYSTEM_PROMPT = """\
@@ -67,19 +66,19 @@ def _format_e2b_block(e2b_output: dict | None) -> str:
 def run_code_quality(
     generated_file_paths: list[str],
     conventions: str,
-    project_name: str,
+    run_dir: str,
     e2b_output: dict | None = None,
 ) -> str:
     """Review generated files for maintainability and style, write a markdown report.
 
     Reads each file at generated_file_paths from disk, calls Haiku once per file
     with the project conventions as context, aggregates structured findings, and
-    writes /output/{project_name}/quality_report.md.
+    writes run_dir/reports/quality_report.md.
 
     Args:
         generated_file_paths: Absolute paths to the Python files to review.
         conventions: Full text of CONVENTIONS.md — the same standards the Coder used.
-        project_name: Used to construct the output subdirectory.
+        run_dir: Absolute path to the run workspace.
 
     Returns:
         Absolute path to the written quality_report.md as a string.
@@ -88,9 +87,9 @@ def run_code_quality(
         anthropic.APIError: If a Claude API call fails unrecoverably.
     """
     logger.info(
-        "Code quality reviewer starting: %d files, project=%s",
+        "Code quality reviewer starting: %d files, run_dir=%s",
         len(generated_file_paths),
-        project_name,
+        run_dir,
     )
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -164,7 +163,7 @@ def run_code_quality(
 
     report = _render_report(all_findings)
 
-    output_path = OUTPUT_DIR / project_name / "quality_report.md"
+    output_path = Path(run_dir) / "reports" / "quality_report.md"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report, encoding="utf-8")
 

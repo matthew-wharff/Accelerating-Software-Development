@@ -16,7 +16,6 @@ from scripts.logger import get_logger
 
 logger = get_logger(__name__)
 
-OUTPUT_DIR = Path(__file__).parent.parent / "output"
 MODEL = "claude-haiku-4-5-20251001"
 
 SYSTEM_PROMPT = """\
@@ -71,20 +70,20 @@ def _format_e2b_block(e2b_output: dict | None) -> str:
 def run_security_reviewer(
     generated_file_paths: list[str],
     shared_deps_path: str,
-    project_name: str,
+    run_dir: str,
     e2b_output: dict | None = None,
 ) -> str:
     """Review generated files for security issues and write a markdown report.
 
     Reads each file at generated_file_paths from disk, calls Haiku once per
     file with an OWASP-focused prompt, aggregates structured findings, and
-    writes /output/{project_name}/security_report.md.
+    writes run_dir/reports/security_report.md.
 
     Args:
         generated_file_paths: Absolute paths to the Python files to review.
         shared_deps_path: Absolute path to shared_dependencies.md (provides
             env-var definitions and cross-file contracts as context).
-        project_name: Used to construct the output subdirectory.
+        run_dir: Absolute path to the run workspace.
 
     Returns:
         Absolute path to the written security_report.md as a string.
@@ -93,9 +92,9 @@ def run_security_reviewer(
         anthropic.APIError: If a Claude API call fails unrecoverably.
     """
     logger.info(
-        "Security reviewer starting: %d files, project=%s",
+        "Security reviewer starting: %d files, run_dir=%s",
         len(generated_file_paths),
-        project_name,
+        run_dir,
     )
 
     try:
@@ -175,7 +174,7 @@ def run_security_reviewer(
 
     report = _render_report(all_findings)
 
-    output_path = OUTPUT_DIR / project_name / "security_report.md"
+    output_path = Path(run_dir) / "reports" / "security_report.md"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report, encoding="utf-8")
 

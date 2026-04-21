@@ -9,7 +9,6 @@ from scripts.logger import get_logger
 logger = get_logger(__name__)
 
 MODEL = "claude-sonnet-4-20250514"
-SHARED_DEPS_PATH = Path(__file__).parent.parent / "context" / "shared_dependencies.md"
 
 _SYSTEM_PROMPT_EXTRACTOR = """\
 You are a code analysis tool. Extract the public interface from Python source code.
@@ -43,9 +42,11 @@ Rules:
 def run_coder_task(
     task: dict,
     shared_deps: str,
+    shared_deps_path: str,
     relevant_interfaces: str,
     prior_signatures: str,
     conventions: str,
+    run_dir: Path,
 ) -> tuple[str, str]:
     """Generate one file via the Ralph Loop: generate → write → extract interface.
 
@@ -59,14 +60,15 @@ def run_coder_task(
             task_id (str): Unique identifier for this task.
             target_file (str): Relative path of the file to generate (e.g. "api/routes.py").
             description (str): Plain-English description of what to implement.
-            project_name (str): Used as the output subdirectory under /output/.
             Optional keys: interface_refs (list[str]), dependency_paths (list[str]).
         shared_deps: Full content of shared_dependencies.md.
+        shared_deps_path: Absolute path to shared_dependencies.md for write-back.
         relevant_interfaces: Interface definitions from INTERFACES.py relevant to
             this task only (pass "" if none apply).
         prior_signatures: Public signatures of files this task depends on
             (function sigs and class headers only — never full implementations).
         conventions: Content of CONVENTIONS.md.
+        run_dir: Absolute path to the run workspace; generated code goes to run_dir/code/.
 
     Returns:
         Tuple of (file_path, extracted_public_interface) where file_path is the
@@ -75,8 +77,7 @@ def run_coder_task(
         subsequent tasks.
 
     Raises:
-        KeyError: If required task keys (task_id, target_file, description,
-            project_name) are missing.
+        KeyError: If required task keys (task_id, target_file, description) are missing.
         anthropic.APIError: If the code generation API call fails.
         ValueError: If write_project_files rejects the filename.
         OSError: If the disk write fails.
@@ -84,7 +85,6 @@ def run_coder_task(
     task_id: str = task["task_id"]
     target_file: str = task["target_file"]
     description: str = task["description"]
-    project_name: str = task["project_name"]
 
     logger.info("Coder starting task %s: %s", task_id, target_file)
 
@@ -164,7 +164,7 @@ def run_coder_task(
     # --- Write to disk immediately — implementation never re-enters context ---
 
     try:
-        written_paths = write_project_files({target_file: generated_code}, project_name)
+        written_paths = write_project_files({target_file: generated_code}, run_dir / "code")
     except (ValueError, OSError) as e:
         logger.error("Coder disk write failed for %s: %s", target_file, e)
         raise
@@ -209,9 +209,10 @@ def run_coder_task(
     # --- Append interface to shared_dependencies.md ---
 
     try:
-        existing = SHARED_DEPS_PATH.read_text(encoding="utf-8")
+        shared_deps_file = Path(shared_deps_path)
+        existing = shared_deps_file.read_text(encoding="utf-8")
         entry = f"\n\n---\n\n### `{target_file}`\n\n{extracted_interface}\n"
-        SHARED_DEPS_PATH.write_text(existing.rstrip() + entry, encoding="utf-8")
+        shared_deps_file.write_text(existing.rstrip() + entry, encoding="utf-8")
         logger.info("Appended interface for %s to shared_dependencies.md", target_file)
     except OSError as e:
         logger.warning(
@@ -224,9 +225,19 @@ def run_coder_task(
 
 
 if __name__ == "__main__":
-    conventions_path = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
-    conventions_content = conventions_path.read_text(encoding="utf-8")
-    shared_deps_content = SHARED_DEPS_PATH.read_text(encoding="utf-8")
+    import tempfile
+    import shutil as _shutil
+
+    _repo = Path(__file__).parent.parent
+    conventions_content = (_repo / "context" / "CONVENTIONS.md").read_text(encoding="utf-8")
+
+    # Create a temp run workspace for the smoke test
+    _tmp = Path(tempfile.mkdtemp())
+    (_tmp / "context").mkdir()
+    (_tmp / "code").mkdir()
+    _shutil.copy(_repo / "context" / "shared_dependencies.template.md", _tmp / "context" / "shared_dependencies.md")
+    _shared_deps_path = str(_tmp / "context" / "shared_dependencies.md")
+    shared_deps_content = Path(_shared_deps_path).read_text(encoding="utf-8")
 
     sample_task = {
         "task_id": "task_001",
@@ -238,15 +249,16 @@ if __name__ == "__main__":
         ),
         "interface_refs": [],
         "dependency_paths": [],
-        "project_name": "hello_ralph",
     }
 
     file_path, public_interface = run_coder_task(
         task=sample_task,
         shared_deps=shared_deps_content,
+        shared_deps_path=_shared_deps_path,
         relevant_interfaces="",
         prior_signatures="",
         conventions=conventions_content,
+        run_dir=_tmp,
     )
 
     logger.info("Generated file at: %s", file_path)

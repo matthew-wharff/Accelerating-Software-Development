@@ -2,7 +2,7 @@
 
 Centralises all disk I/O for generated code: sanitises LLM-produced filenames
 to prevent path traversal, creates output directories automatically, and writes
-every file to /output/{project_name}/{filename}.
+every file under the provided run_dir.
 
 Design constraint: this module is the only place that writes generated source
 code to disk. Agents return content; the pipeline calls this module; state
@@ -16,8 +16,6 @@ from pathlib import Path, PurePosixPath
 from scripts.logger import get_logger
 
 logger = get_logger(__name__)
-
-OUTPUT_DIR = Path(__file__).parent.parent / "output"
 
 
 def sanitize_filename(filename: str) -> str:
@@ -47,10 +45,9 @@ def sanitize_filename(filename: str) -> str:
 
 def write_project_files(
     files: dict[str, str],
-    project_name: str,
-    base_dir: Path | None = None,
+    run_dir: Path,
 ) -> list[str]:
-    """Write a dict of generated files to /output/{project_name}/.
+    """Write a dict of generated files under run_dir.
 
     Each key in ``files`` is a target filename (possibly with subdirectory
     components like ``models/user.py``). Each value is the raw source code.
@@ -58,25 +55,21 @@ def write_project_files(
 
     Args:
         files: Mapping of ``{filename: source_code}`` produced by the Coder.
-        project_name: Subdirectory under ``base_dir`` that groups all files
-            for this pipeline run, e.g. ``"todo_app"``.
-        base_dir: Root output directory. Defaults to the repo-level
-            ``output/`` folder. Override in tests to use a tmp path.
+        run_dir: Absolute path to the directory to write files into, e.g.
+            ``Path(state["run_dir"]) / "code"`` for source files or
+            ``Path(state["run_dir"]) / "reports"`` for critic reports.
 
     Returns:
         List of absolute path strings for every file written to disk.
 
     Raises:
-        ValueError: If ``files`` is empty, ``project_name`` is empty, or a
-            filename is unsafe.
+        ValueError: If ``files`` is empty or a filename is unsafe.
         OSError: If a file cannot be written to disk.
     """
     if not files:
         raise ValueError("files dict is empty — nothing to write")
-    if not project_name or not project_name.strip():
-        raise ValueError("project_name must not be empty")
 
-    root = (base_dir or OUTPUT_DIR) / project_name
+    root = run_dir
     written: list[str] = []
 
     for raw_name, content in files.items():

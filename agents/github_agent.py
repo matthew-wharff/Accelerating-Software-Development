@@ -128,7 +128,10 @@ def run_github(
 
 
 def _find_output_prefix(paths: list[str]) -> str:
-    """Find the /output/{project_name}/ prefix common to all generated paths.
+    """Find the output/code/ prefix common to all generated paths.
+
+    Matches the new run_dir structure: output/<run_id>/code/. Stripping this
+    prefix gives repo-relative paths so files commit at the repo root.
 
     Args:
         paths: List of absolute file paths.
@@ -137,7 +140,7 @@ def _find_output_prefix(paths: list[str]) -> str:
         The common output prefix string, or empty string if not determinable.
     """
     for p in paths:
-        match = re.match(r"(.*?/output/[^/]+/)", p)
+        match = re.match(r"(.*?/output/[^/]+/code/)", p)
         if match:
             return match.group(1)
     return ""

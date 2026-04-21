@@ -12,7 +12,6 @@ from state.schema import TaskEntry
 
 logger = get_logger(__name__)
 
-CONTEXT_DIR = Path(__file__).parent.parent / "context"
 MODEL = "claude-sonnet-4-20250514"
 MODEL_HAIKU = "claude-haiku-4-5-20251001"
 
@@ -297,8 +296,8 @@ def _parse_task_queue_json(raw_json: str) -> list[TaskEntry]:
     return [TaskEntry(**entry) for entry in parsed]
 
 
-def run_architect(clarified_brief: str, conventions: str) -> dict:
-    """Run the two-pass Architect pipeline and write four artifacts to /context/.
+def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
+    """Run the two-pass Architect pipeline and write four artifacts to run_dir/context/.
 
     Pass 1 generates ARCHITECT_SPEC.md and INTERFACES.py in sequence.
     Pass 2 reads both Pass 1 outputs from disk and uses them to generate
@@ -309,6 +308,7 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
     Args:
         clarified_brief: The project brief after Spec Clarifier processing.
         conventions: Content of CONVENTIONS.md, injected into every call.
+        run_dir: Absolute path to the run workspace created by workspace_node.
 
     Returns:
         Dict with keys:
@@ -323,7 +323,7 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         json.JSONDecodeError: If the task_queue.json response is malformed.
         ValueError: If parsed outputs fail validation.
     """
-    CONTEXT_DIR.mkdir(parents=True, exist_ok=True)
+    context_dir = Path(run_dir) / "context"
 
     # ── Pass 1, Call 1: ARCHITECT_SPEC.md ──────────────────────────────────
     logger.info("Architect Pass 1 — generating ARCHITECT_SPEC.md")
@@ -336,7 +336,7 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
     spec_text = _call_claude(
         SYSTEM_PROMPT_SPEC, spec_user_prompt, max_tokens=8192, thinking_budget=5000
     )
-    spec_path = CONTEXT_DIR / "ARCHITECT_SPEC.md"
+    spec_path = context_dir / "ARCHITECT_SPEC.md"
     spec_path.write_text(spec_text, encoding="utf-8")
     logger.info("Architect wrote ARCHITECT_SPEC.md (%d chars)", len(spec_text))
 
@@ -355,7 +355,7 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         thinking_budget=2000,
     )
     interfaces_text = _strip_markdown_fence(interfaces_text, "python")
-    interfaces_path = CONTEXT_DIR / "INTERFACES.py"
+    interfaces_path = context_dir / "INTERFACES.py"
     interfaces_path.write_text(interfaces_text, encoding="utf-8")
     logger.info("Architect wrote INTERFACES.py (%d chars)", len(interfaces_text))
 
@@ -380,7 +380,7 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         max_tokens=6144,
         thinking_budget=3500,
     )
-    shared_deps_path = CONTEXT_DIR / "shared_dependencies.md"
+    shared_deps_path = context_dir / "shared_dependencies.md"
     shared_deps_path.write_text(shared_deps_text, encoding="utf-8")
     logger.info(
         "Architect wrote shared_dependencies.md (%d chars)", len(shared_deps_text)
@@ -411,7 +411,7 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         )
         raise
 
-    task_queue_path = CONTEXT_DIR / "task_queue.json"
+    task_queue_path = context_dir / "task_queue.json"
     task_queue_path.write_text(json.dumps(task_queue, indent=2), encoding="utf-8")
     logger.info("Architect wrote task_queue.json (%d tasks)", len(task_queue))
 
