@@ -29,7 +29,7 @@ agents/       # one .py file per agent (coder, architect, spec_clarifier, etc.)
 graph/        # LangGraph graph definition — pipeline.py lives here
 state/        # shared state schema — schema.py
 prompts/      # prompt template strings
-context/      # stable context files injected into every agent call (see below)
+context/      # stable human-edited files (CONVENTIONS.md, ARCHITECTURE.md, shared_dependencies.template.md); runtime context lives at output/<run_id>/context/
 tests/        # unit + integration tests
 output/       # generated code lands here — gitignored, never committed
 scripts/      # utility scripts (file_writer.py, logger.py)
@@ -54,10 +54,11 @@ The core design constraint is **context isolation** — the 87%/19% accuracy gap
 
 **State holds file paths, never file contents.** Generated code is written to `/output/` immediately. State stores the path. Agents read from disk when they need source.
 
-**Three stable context files** live in `/context/` and are injected into every agent call:
+**Two stable context files** live in `/context/` and are injected into every agent call:
 - `CONVENTIONS.md` — coding standards for this project
-- `shared_dependencies.md` — cross-file contract manifest (updated after each Coder task)
 - `ARCHITECTURE.md` — high-level system overview
+
+**`context/shared_dependencies.template.md`** is the committed empty template. At pipeline start, the Architect Agent copies it to `output/<run_id>/context/shared_dependencies.md` and updates it after each Coder task. Runtime-generated context (`shared_dependencies.md`, `task_queue.json`, `ARCHITECT_SPEC.md`, `INTERFACES.py`, `SYNTHESIS_REPORT.md`, `clarified_brief.md`) lives at `output/<run_id>/context/` and is never committed.
 
 ## Conventions
 
