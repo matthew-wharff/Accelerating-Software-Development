@@ -29,12 +29,37 @@ SYSTEM_PROMPT = (
 )
 
 
+def _format_e2b_block(e2b_output: dict | None) -> str:
+    """Format sandbox runtime output as a markdown section for critic prompts.
+
+    Args:
+        e2b_output: Dict with stdout, stderr, exit_code keys, or None.
+
+    Returns:
+        Formatted markdown string, or empty string if no output available.
+    """
+    if not e2b_output:
+        return ""
+    stdout = e2b_output.get("stdout") or "(none)"
+    stderr = e2b_output.get("stderr") or "(none)"
+    exit_code = e2b_output.get("exit_code", "N/A")
+    return (
+        "\n---\n\n"
+        "## Runtime Output (e2b sandbox)\n\n"
+        f"**Exit code:** {exit_code}\n\n"
+        f"**stdout:**\n```\n{stdout}\n```\n\n"
+        f"**stderr:**\n```\n{stderr}\n```\n\n"
+        "The code produced this output when run. Use it to inform your review.\n"
+    )
+
+
 def _build_user_prompt(
     source_path: Path,
     source_code: str,
     interfaces_content: str,
     shared_deps_content: str,
     expected_test_filename: str,
+    e2b_output: dict | None = None,
 ) -> str:
     """Assemble the per-file user prompt for test generation.
 
@@ -44,6 +69,7 @@ def _build_user_prompt(
         interfaces_content: Contents of INTERFACES.py.
         shared_deps_content: Contents of shared_dependencies.md.
         expected_test_filename: The exact JSON key Claude must use, e.g. test_foo.py.
+        e2b_output: Optional sandbox runtime output dict.
 
     Returns:
         Formatted user prompt string.
@@ -67,6 +93,7 @@ def _build_user_prompt(
         f"## Output Format\n\n"
         f"Return ONLY a JSON object — no markdown fences, no preamble:\n"
         f'{{"tests": {{"{expected_test_filename}": "...full pytest source..."}}}}'
+        f"{_format_e2b_block(e2b_output)}"
     )
 
 
@@ -116,6 +143,7 @@ def run_test_writer(
     interfaces_path: str,
     shared_deps_path: str,
     project_name: str,
+    e2b_output: dict | None = None,
 ) -> list[str]:
     """Generate pytest test files for each generated source file.
 
@@ -193,6 +221,7 @@ def run_test_writer(
             interfaces_content,
             shared_deps_content,
             expected_test_name,
+            e2b_output=e2b_output,
         )
 
         try:

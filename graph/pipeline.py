@@ -19,16 +19,29 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
 import re
+from typing import Any
 
-from agents.architect import run_architect_evaluate, run_architect_redecompose, run_architect_revision
+from agents.architect import (
+    run_architect_evaluate,
+    run_architect_redecompose,
+    run_architect_revision,
+)
 from agents.code_quality import run_code_quality
 from agents.coder import run_coder_task
 from agents.devops import run_devops
+from agents.github_agent import run_github
 from agents.security_reviewer import run_security_reviewer
 from agents.synthesis import run_synthesis
 from agents.test_writer import run_test_writer
 from scripts.logger import get_logger
-from state.schema import PipelineState, TaskEntry, TaskLogEntry, default_state
+import config
+from state.schema import (
+    E2bOutput,
+    PipelineState,
+    TaskEntry,
+    TaskLogEntry,
+    default_state,
+)
 
 CONVENTIONS_PATH = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
 SHARED_DEPS_PATH = Path(__file__).parent.parent / "context" / "shared_dependencies.md"
@@ -67,7 +80,8 @@ def read_synthesis_report(path: str) -> dict:
             return {"has_blocking_issues": value == "true"}
 
     logger.warning(
-        "read_synthesis_report: sentinel line not found in %s — defaulting to False", path
+        "read_synthesis_report: sentinel line not found in %s — defaulting to False",
+        path,
     )
     return {"has_blocking_issues": False}
 
@@ -239,6 +253,7 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
                 "interfaces_path": interfaces_path,
                 "shared_deps_path": shared_deps_path,
                 "project_name": project_name,
+                "e2b_output": state.get("e2b_output"),
             },
         ),
         Send(
@@ -247,6 +262,7 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
                 "generated_file_paths": generated_file_paths,
                 "shared_deps_path": shared_deps_path,
                 "project_name": project_name,
+                "e2b_output": state.get("e2b_output"),
             },
         ),
         Send(
@@ -255,12 +271,13 @@ def dispatch_critics(state: PipelineState) -> list[Send]:
                 "generated_file_paths": generated_file_paths,
                 "conventions": conventions,
                 "project_name": project_name,
+                "e2b_output": state.get("e2b_output"),
             },
         ),
     ]
 
 
-def test_writer_node(state: dict) -> dict:
+def test_writer_node(state: Any) -> dict:
     """Run the Test Writer critic against all generated files.
 
     Args:
@@ -278,6 +295,7 @@ def test_writer_node(state: dict) -> dict:
             interfaces_path=state["interfaces_path"],
             shared_deps_path=state["shared_deps_path"],
             project_name=state["project_name"],
+            e2b_output=state.get("e2b_output"),
         )
     except Exception as exc:
         logger.error("test_writer_node: failed: %s", exc)
@@ -292,7 +310,7 @@ def test_writer_node(state: dict) -> dict:
     return {"test_feedback_path": summary_path}
 
 
-def security_reviewer_node(state: dict) -> dict:
+def security_reviewer_node(state: Any) -> dict:
     """Run the Security Reviewer critic against all generated files.
 
     Args:
@@ -309,6 +327,7 @@ def security_reviewer_node(state: dict) -> dict:
             generated_file_paths=state["generated_file_paths"],
             shared_deps_path=state["shared_deps_path"],
             project_name=state["project_name"],
+            e2b_output=state.get("e2b_output"),
         )
     except Exception as exc:
         logger.error("security_reviewer_node: failed: %s", exc)
@@ -321,7 +340,7 @@ def security_reviewer_node(state: dict) -> dict:
     return {"security_feedback_path": report_path}
 
 
-def quality_reviewer_node(state: dict) -> dict:
+def quality_reviewer_node(state: Any) -> dict:
     """Run the Code Quality critic against all generated files.
 
     Args:
@@ -338,6 +357,7 @@ def quality_reviewer_node(state: dict) -> dict:
             generated_file_paths=state["generated_file_paths"],
             conventions=state["conventions"],
             project_name=state["project_name"],
+            e2b_output=state.get("e2b_output"),
         )
     except Exception as exc:
         logger.error("quality_reviewer_node: failed: %s", exc)
@@ -350,7 +370,7 @@ def quality_reviewer_node(state: dict) -> dict:
     return {"quality_feedback_path": report_path}
 
 
-def devops_node(state: dict) -> dict:
+def devops_node(state: Any) -> dict:
     """Run the DevOps agent to generate infrastructure files.
 
     Args:
@@ -592,7 +612,7 @@ def architect_revision_node(state: PipelineState) -> dict:
         Returns {"status": "failed"} on unrecoverable error.
     """
     revision_number = state.get("revision_count", 0) + 1
-    report_path = state.get("synthesis_report_path", "")
+    report_path = state.get("synthesis_report_path") or ""
 
     logger.info(
         "architect_revision_node: starting revision %d from %s",
@@ -633,16 +653,100 @@ def architect_revision_node(state: PipelineState) -> dict:
 
 
 def e2b_node(state: PipelineState) -> dict:
-    """Stub for the e2b sandbox execution node.
+    """Execute generated files in an e2b sandbox and capture runtime output.
+
+    Writes each generated file to the sandbox filesystem (flat namespace under
+    /home/user/), attempts to run the main entrypoint (main.py if present,
+    otherwise the first file), and captures stdout, stderr, and exit code.
+    The sandbox is shut down after execution regardless of outcome. A 30-second
+    timeout guards against generated code that hangs.
 
     Args:
         state: The current pipeline state.
 
     Returns:
-        Partial state dict with status "running".
+        Partial state dict updating ``e2b_output``.
     """
-    logger.info("e2b_node: stub — sandbox execution not yet implemented")
-    return {"status": "running"}
+    from e2b_code_interpreter import Sandbox
+
+    file_paths: list[str] = state.get("generated_file_paths", [])
+    if not file_paths:
+        logger.warning("e2b_node: no generated files — skipping sandbox execution")
+        return {
+            "e2b_output": E2bOutput(
+                stdout="", stderr="No files to execute.", exit_code=-1
+            )
+        }
+
+    stdout = ""
+    stderr = ""
+    exit_code = -1
+
+    try:
+        with Sandbox(api_key=config.E2B_API_KEY, timeout=30) as sandbox:
+            for abs_path in file_paths:
+                try:
+                    source = Path(abs_path).read_text(encoding="utf-8")
+                except OSError as exc:
+                    logger.warning("e2b_node: could not read %s: %s", abs_path, exc)
+                    continue
+                filename = Path(abs_path).name
+                sandbox.files.write(f"/home/user/{filename}", source)
+
+            names = [Path(p).name for p in file_paths]
+            entrypoint = "main.py" if "main.py" in names else names[0]
+
+            result = sandbox.commands.run(
+                f"cd /home/user && python3 {entrypoint}",
+                timeout=30,
+            )
+            stdout = result.stdout or ""
+            stderr = result.stderr or ""
+            exit_code = result.exit_code if result.exit_code is not None else -1
+
+    except Exception as exc:
+        logger.error("e2b_node: sandbox error: %s", exc)
+        stderr = str(exc)
+        exit_code = -1
+
+    e2b_output = E2bOutput(stdout=stdout, stderr=stderr, exit_code=exit_code)
+    logger.info(
+        "e2b_node: exit_code=%d stdout=%d chars stderr=%d chars",
+        exit_code,
+        len(stdout),
+        len(stderr),
+    )
+    return {"e2b_output": e2b_output}
+
+
+def github_node(state: PipelineState) -> dict:
+    """Publish generated files to a new GitHub repo and open an initial PR.
+
+    Reads generated_file_paths and devops_config_paths from state (disk paths),
+    creates a public GitHub repo named after the project brief slug, commits all
+    files to a ``scaffold/initial`` branch, and opens an initial PR against main.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict updating ``github_repo_url`` and ``status``.
+    """
+    t0 = time.perf_counter()
+    logger.info("github_node: publishing to GitHub")
+    try:
+        repo_url = run_github(
+            project_brief=state.get("project_brief", ""),
+            generated_file_paths=state.get("generated_file_paths", []),
+            devops_config_paths=state.get("devops_config_paths", []),
+        )
+    except Exception as exc:
+        logger.error("github_node: failed: %s", exc)
+        return {"status": "failed", "github_repo_url": None}
+    logger.info(
+        "github_node: done in %.2fs — repo at %s", time.perf_counter() - t0, repo_url
+    )
+    return {"github_repo_url": repo_url, "status": "complete"}
 
 
 def _route_after_architect_dispatch(state: PipelineState) -> str:
@@ -677,6 +781,7 @@ _builder.add_node("quality_reviewer_node", quality_reviewer_node)
 _builder.add_node("devops_node", devops_node)
 _builder.add_node("synthesis", synthesis_node)
 _builder.add_node("architect_revision", architect_revision_node)
+_builder.add_node("github", github_node)
 
 _builder.add_edge(START, "architect_dispatch")
 _builder.add_conditional_edges(
@@ -702,9 +807,10 @@ _builder.add_edge("devops_node", "synthesis")
 _builder.add_conditional_edges(
     "synthesis",
     should_revise,
-    {"architect_revision": "architect_revision", "end": END},
+    {"architect_revision": "architect_revision", "end": "github"},
 )
 _builder.add_edge("architect_revision", "architect_dispatch")
+_builder.add_edge("github", END)
 
 app = _builder.compile()
 
@@ -741,6 +847,7 @@ if __name__ == "__main__":
     logger.info("Security feedback : %s", final_state.get("security_feedback_path"))
     logger.info("Quality feedback  : %s", final_state.get("quality_feedback_path"))
     logger.info("Task log          : %s", final_state["task_log"])
+    logger.info("GitHub repo       : %s", final_state.get("github_repo_url"))
 
     assert final_state["generated_file_paths"], "generated_file_paths must not be empty"
     for p in final_state["generated_file_paths"]:

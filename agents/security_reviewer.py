@@ -44,10 +44,35 @@ Do not include any text outside the JSON array.
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
+def _format_e2b_block(e2b_output: dict | None) -> str:
+    """Format sandbox runtime output as a markdown section for critic prompts.
+
+    Args:
+        e2b_output: Dict with stdout, stderr, exit_code keys, or None.
+
+    Returns:
+        Formatted markdown string, or empty string if no output available.
+    """
+    if not e2b_output:
+        return ""
+    stdout = e2b_output.get("stdout") or "(none)"
+    stderr = e2b_output.get("stderr") or "(none)"
+    exit_code = e2b_output.get("exit_code", "N/A")
+    return (
+        "\n---\n\n"
+        "## Runtime Output (e2b sandbox)\n\n"
+        f"**Exit code:** {exit_code}\n\n"
+        f"**stdout:**\n```\n{stdout}\n```\n\n"
+        f"**stderr:**\n```\n{stderr}\n```\n\n"
+        "The code produced this output when run. Use it to inform your review.\n"
+    )
+
+
 def run_security_reviewer(
     generated_file_paths: list[str],
     shared_deps_path: str,
     project_name: str,
+    e2b_output: dict | None = None,
 ) -> str:
     """Review generated files for security issues and write a markdown report.
 
@@ -99,6 +124,7 @@ def run_security_reviewer(
             f"## Shared Dependencies Context\n\n{shared_deps}\n\n"
             f"## File Contents\n\n```python\n{source_code}\n```\n\n"
             "Return ONLY a JSON array of findings as described in the system prompt."
+            f"{_format_e2b_block(e2b_output)}"
         )
 
         try:

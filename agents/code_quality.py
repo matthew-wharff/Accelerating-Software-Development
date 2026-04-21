@@ -40,10 +40,35 @@ Do not include any text outside the JSON array.
 _CATEGORY_ORDER = {"style": 0, "docs": 1, "edge-case": 2, "maintainability": 3}
 
 
+def _format_e2b_block(e2b_output: dict | None) -> str:
+    """Format sandbox runtime output as a markdown section for critic prompts.
+
+    Args:
+        e2b_output: Dict with stdout, stderr, exit_code keys, or None.
+
+    Returns:
+        Formatted markdown string, or empty string if no output available.
+    """
+    if not e2b_output:
+        return ""
+    stdout = e2b_output.get("stdout") or "(none)"
+    stderr = e2b_output.get("stderr") or "(none)"
+    exit_code = e2b_output.get("exit_code", "N/A")
+    return (
+        "\n---\n\n"
+        "## Runtime Output (e2b sandbox)\n\n"
+        f"**Exit code:** {exit_code}\n\n"
+        f"**stdout:**\n```\n{stdout}\n```\n\n"
+        f"**stderr:**\n```\n{stderr}\n```\n\n"
+        "The code produced this output when run. Use it to inform your review.\n"
+    )
+
+
 def run_code_quality(
     generated_file_paths: list[str],
     conventions: str,
     project_name: str,
+    e2b_output: dict | None = None,
 ) -> str:
     """Review generated files for maintainability and style, write a markdown report.
 
@@ -86,6 +111,7 @@ def run_code_quality(
             f"## Project Conventions\n\n{conventions}\n\n"
             f"## File Contents\n\n```python\n{source_code}\n```\n\n"
             "Return ONLY a JSON array of findings as described in the system prompt."
+            f"{_format_e2b_block(e2b_output)}"
         )
 
         try:

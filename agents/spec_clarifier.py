@@ -16,7 +16,7 @@ SYSTEM_PROMPT = (
     "Prioritize questions about technical decisions that are hard to change later: "
     "authentication mechanism, database choice, API design, data schema, and expected scale. "
     "Deprioritize stylistic or cosmetic preferences. "
-    "Return ONLY a JSON object with a single key \"questions\" containing a list of 3–5 question strings. "
+    'Return ONLY a JSON object with a single key "questions" containing a list of 3–5 question strings. '
     "No explanations, no markdown — just the raw JSON object."
 )
 
@@ -49,7 +49,7 @@ def run_spec_clarifier(project_brief: str, conventions: str) -> dict[str, list[s
         f"## Project Conventions\n\n{conventions}\n\n"
         f"## Project Brief\n\n{project_brief}\n\n"
         "Identify the 3–5 questions that would most reduce ambiguity in this brief. "
-        "Return a JSON object: {\"questions\": [\"...\", ...]}"
+        'Return a JSON object: {"questions": ["...", ...]}'
     )
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -86,9 +86,7 @@ def run_spec_clarifier(project_brief: str, conventions: str) -> dict[str, list[s
 
     questions: list[str] = parsed.get("questions", [])
     if not (3 <= len(questions) <= 5) or not all(isinstance(q, str) for q in questions):
-        raise ValueError(
-            f"Expected 3–5 question strings, got: {questions!r}"
-        )
+        raise ValueError(f"Expected 3–5 question strings, got: {questions!r}")
 
     answers: list[str] = ["[placeholder] To be determined"] * len(questions)
 

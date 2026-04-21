@@ -64,3 +64,179 @@ _Additional variables added by Architect Agent (AGT-02) based on project brief._
 |---|---|---|
 
 _Populated progressively as Coder tasks complete._
+
+---
+
+### `main.py`
+
+### Functions
+def get_db_connection()
+def init_database() -> None
+def startup_event() -> None
+def create_user(user_data: UserCreate) -> User
+def get_user(user_id: int) -> User
+
+### Classes
+class UserCreate(BaseModel):
+    name: str
+    email: str
+
+class User(BaseModel):
+    id: int
+    name: str
+    email: str
+
+### Module-Level Constants
+app: FastAPI
+DATABASE_PATH: str = "users.db"
+
+---
+
+### `main.py`
+
+### Functions
+def get_db_connection()
+def init_database() -> None
+def lifespan(app: FastAPI)
+def startup_event() -> None
+def create_user(user_data: UserCreate) -> User
+def get_user(user_id: int) -> User
+
+### Classes
+class UserCreate:
+    name: str
+    email: str
+
+class User:
+    id: int
+    name: str
+    email: str
+
+### Module-Level Constants
+DATABASE_PATH: str = "users.db"
+app: FastAPI
+
+---
+
+### `main.py`
+
+### Functions
+def get_db_connection() -> sqlite3.Connection
+def init_database() -> None
+async def lifespan(app: FastAPI)
+def startup_event() -> None
+def create_user(user_data: UserCreate) -> User
+def get_user(user_id: int) -> User
+
+### Classes
+class UserCreate:
+    name: str
+    email: str
+
+class User:
+    id: int
+    name: str
+    email: str
+
+### Module-Level Constants
+DATABASE_PATH: str = "users.db"
+app: FastAPI
+
+---
+
+### `main.py`
+
+### Functions
+def get_db_connection() -> sqlite3.Connection
+def init_database() -> None
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict
+async def lifespan(app: FastAPI)
+def startup_event() -> None
+def hash_password(password: str) -> str
+def verify_password(password: str, hashed: str) -> bool
+def sanitize_sql_input(value: str) -> str
+def create_user(user_data: UserCreate) -> User
+def get_user(user_id: int, current_user: dict = Depends(verify_token)) -> User
+async def add_security_headers(request, call_next)
+
+### Classes
+class UserCreate:
+    name: str
+    email: EmailStr
+    password: str
+    def validate_name(cls, v)
+    def validate_password(cls, v)
+
+class User:
+    id: int
+    name: str
+    email: str
+
+### Module-Level Constants
+EMAIL_PATTERN: re.Pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+NAME_PATTERN: re.Pattern = re.compile(r'^[a-zA-Z\s\-\']{1,100}$')
+security: HTTPBearer = HTTPBearer()
+DATABASE_PATH: str = "users.db"
+app: FastAPI
+
+---
+
+### `main.py`
+
+### Functions
+def get_db_connection() -> sqlite3.Connection
+def init_database() -> None
+def lifespan(app: FastAPI)
+def startup_event() -> None
+def create_user(user_data: UserCreate) -> User
+def get_user(user_id: int) -> User
+
+### Classes
+class UserCreate:
+    name: str
+    email: str
+
+class User:
+    id: int
+    name: str
+    email: str
+
+### Module-Level Constants
+DATABASE_PATH: str = "users.db"
+app: FastAPI
+
+---
+
+### `main.py`
+
+### Functions
+def get_db_connection() -> sqlite3.Connection
+def init_database() -> None
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict
+def startup_event() -> None
+def hash_password(password: str) -> str
+def verify_password(password: str, hashed: str) -> bool
+def sanitize_sql_input(value: str) -> str
+async def add_security_headers(request: Request, call_next)
+def create_user(user_data: UserCreate) -> User
+def get_user(user_id: int, current_user: Dict = Depends(verify_token)) -> User
+
+### Classes
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    def validate_name(cls, v)
+    def validate_password(cls, v)
+
+class User(BaseModel):
+    id: int
+    name: str
+    email: str
+
+### Module-Level Constants
+EMAIL_PATTERN: re.Pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+NAME_PATTERN: re.Pattern = re.compile(r'^[a-zA-Z\s\-\']{1,100}$')
+security: HTTPBearer = HTTPBearer()
+DATABASE_PATH: str = "users.db"
+app: FastAPI = FastAPI(title="Secure User API", description="A secure user management API", version="1.0.0", lifespan=lifespan)

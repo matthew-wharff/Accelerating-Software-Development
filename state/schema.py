@@ -118,6 +118,8 @@ class PipelineState(TypedDict):
         task_failure_count: Consecutive validation failures for the current
             task. Resets when a new task begins; escalates to Architect at 3.
         status: Overall pipeline status. One of "running", "complete", "failed".
+        github_repo_url: HTML URL of the GitHub repo created by github_node.
+            None until that node runs successfully.
     """
 
     # Input
@@ -155,6 +157,9 @@ class PipelineState(TypedDict):
     revision_count: int
     status: str
 
+    # GitHub output
+    github_repo_url: Optional[str]
+
 
 def default_state(project_brief: str = "") -> PipelineState:
     """Return a PipelineState initialised with safe defaults.
@@ -190,4 +195,5 @@ def default_state(project_brief: str = "") -> PipelineState:
         has_blocking_issues=False,
         revision_count=0,
         status="running",
+        github_repo_url=None,
     )

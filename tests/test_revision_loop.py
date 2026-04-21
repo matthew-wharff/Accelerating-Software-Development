@@ -90,7 +90,7 @@ def test_revision_loop_fires_on_blocking_issues():
             target_file="main.py",
             description=(
                 "Implement a FastAPI app with SQLite. Use raw SQL f-strings for queries "
-                "(e.g. f\"SELECT * FROM users WHERE id={user_id}\"). "
+                '(e.g. f"SELECT * FROM users WHERE id={user_id}"). '
                 "No input validation. Endpoints: POST /users, GET /users/{id}."
             ),
             interface_refs=[],

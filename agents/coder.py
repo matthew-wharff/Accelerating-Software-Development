@@ -201,7 +201,9 @@ def run_coder_task(
         if not extracted_interface:
             raise ValueError("Empty extraction response")
     except (anthropic.APIError, ValueError) as e:
-        logger.warning("Interface extraction failed for %s (non-fatal): %s", target_file, e)
+        logger.warning(
+            "Interface extraction failed for %s (non-fatal): %s", target_file, e
+        )
         extracted_interface = f"# Interface extraction failed for {target_file}\n"
 
     # --- Append interface to shared_dependencies.md ---

@@ -197,7 +197,9 @@ _REQUIRED_TASK_KEYS = {
 }
 
 
-def _call_claude(system_prompt: str, user_prompt: str, max_tokens: int, thinking_budget: int = 0) -> str:
+def _call_claude(
+    system_prompt: str, user_prompt: str, max_tokens: int, thinking_budget: int = 0
+) -> str:
     """Call Claude with an ephemeral-cached system prompt and return raw text.
 
     When thinking_budget > 0, extended thinking is enabled. Thinking blocks
@@ -244,7 +246,9 @@ def _call_claude(system_prompt: str, user_prompt: str, max_tokens: int, thinking
         if isinstance(block, anthropic.types.TextBlock):
             return block.text
 
-    raise ValueError(f"No TextBlock found in response; block types: {[type(b).__name__ for b in response.content]}")
+    raise ValueError(
+        f"No TextBlock found in response; block types: {[type(b).__name__ for b in response.content]}"
+    )
 
 
 def _strip_markdown_fence(text: str, lang: str = "") -> str:
@@ -329,7 +333,9 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         f"## Clarified Project Brief\n\n{clarified_brief}\n\n"
         "Produce ARCHITECT_SPEC.md now."
     )
-    spec_text = _call_claude(SYSTEM_PROMPT_SPEC, spec_user_prompt, max_tokens=8192, thinking_budget=5000)
+    spec_text = _call_claude(
+        SYSTEM_PROMPT_SPEC, spec_user_prompt, max_tokens=8192, thinking_budget=5000
+    )
     spec_path = CONTEXT_DIR / "ARCHITECT_SPEC.md"
     spec_path.write_text(spec_text, encoding="utf-8")
     logger.info("Architect wrote ARCHITECT_SPEC.md (%d chars)", len(spec_text))
@@ -343,7 +349,10 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         "Produce INTERFACES.py now. Remember: interfaces only, no implementations."
     )
     interfaces_text = _call_claude(
-        SYSTEM_PROMPT_INTERFACES, interfaces_user_prompt, max_tokens=4096, thinking_budget=2000
+        SYSTEM_PROMPT_INTERFACES,
+        interfaces_user_prompt,
+        max_tokens=4096,
+        thinking_budget=2000,
     )
     interfaces_text = _strip_markdown_fence(interfaces_text, "python")
     interfaces_path = CONTEXT_DIR / "INTERFACES.py"
@@ -366,7 +375,10 @@ def run_architect(clarified_brief: str, conventions: str) -> dict:
         "replace it entirely with concrete content derived from the spec and interfaces above."
     )
     shared_deps_text = _call_claude(
-        SYSTEM_PROMPT_SHARED_DEPS, shared_deps_user_prompt, max_tokens=6144, thinking_budget=3500
+        SYSTEM_PROMPT_SHARED_DEPS,
+        shared_deps_user_prompt,
+        max_tokens=6144,
+        thinking_budget=3500,
     )
     shared_deps_path = CONTEXT_DIR / "shared_dependencies.md"
     shared_deps_path.write_text(shared_deps_text, encoding="utf-8")
@@ -689,13 +701,17 @@ def run_architect_revision(
         try:
             spec_content = Path(architect_spec_path).read_text(encoding="utf-8")
         except OSError:
-            logger.warning("run_architect_revision: could not read spec at %s", architect_spec_path)
+            logger.warning(
+                "run_architect_revision: could not read spec at %s", architect_spec_path
+            )
 
     shared_deps_content = ""
     try:
         shared_deps_content = Path(shared_deps_path).read_text(encoding="utf-8")
     except OSError:
-        logger.warning("run_architect_revision: could not read shared_deps at %s", shared_deps_path)
+        logger.warning(
+            "run_architect_revision: could not read shared_deps at %s", shared_deps_path
+        )
 
     # Build registry of relative names so the model knows what files exist.
     registry_lines = [Path(p).name for p in generated_file_paths]

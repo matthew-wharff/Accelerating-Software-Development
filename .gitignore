@@ -211,4 +211,6 @@ output/
 
 #claude.md
 CLAUDE.md
-.claude/
+context/project_guide_v2.md
+context/DevAssistant_TaskList_v3.md
+AUDIT_REPORT.md
