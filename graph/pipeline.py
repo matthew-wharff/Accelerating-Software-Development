@@ -682,32 +682,39 @@ def e2b_node(state: PipelineState) -> dict:
     stderr = ""
     exit_code = -1
 
+    sandbox = None
     try:
-        with Sandbox(api_key=config.E2B_API_KEY, timeout=30) as sandbox:
-            for abs_path in file_paths:
-                try:
-                    source = Path(abs_path).read_text(encoding="utf-8")
-                except OSError as exc:
-                    logger.warning("e2b_node: could not read %s: %s", abs_path, exc)
-                    continue
-                filename = Path(abs_path).name
-                sandbox.files.write(f"/home/user/{filename}", source)
+        sandbox = Sandbox.create(timeout=30, api_key=config.E2B_API_KEY)
+        for abs_path in file_paths:
+            try:
+                source = Path(abs_path).read_text(encoding="utf-8")
+            except OSError as exc:
+                logger.warning("e2b_node: could not read %s: %s", abs_path, exc)
+                continue
+            filename = Path(abs_path).name
+            sandbox.files.write(f"/home/user/{filename}", source)
 
-            names = [Path(p).name for p in file_paths]
-            entrypoint = "main.py" if "main.py" in names else names[0]
+        names = [Path(p).name for p in file_paths]
+        entrypoint = "main.py" if "main.py" in names else names[0]
 
-            result = sandbox.commands.run(
-                f"cd /home/user && python3 {entrypoint}",
-                timeout=30,
-            )
-            stdout = result.stdout or ""
-            stderr = result.stderr or ""
-            exit_code = result.exit_code if result.exit_code is not None else -1
+        result = sandbox.commands.run(
+            f"cd /home/user && python3 {entrypoint}",
+            timeout=30,
+        )
+        stdout = result.stdout or ""
+        stderr = result.stderr or ""
+        exit_code = result.exit_code if result.exit_code is not None else -1
 
     except Exception as exc:
         logger.error("e2b_node: sandbox error: %s", exc)
         stderr = str(exc)
         exit_code = -1
+    finally:
+        if sandbox is not None:
+            try:
+                sandbox.kill()
+            except Exception as exc:
+                logger.warning("e2b_node: sandbox.kill() failed: %s", exc)
 
     e2b_output = E2bOutput(stdout=stdout, stderr=stderr, exit_code=exit_code)
     logger.info(
@@ -720,11 +727,54 @@ def e2b_node(state: PipelineState) -> dict:
 
 
 def github_node(state: PipelineState) -> dict:
+    """Route to dry-run or live GitHub publish based on PIPELINE_MODE.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict updating ``github_repo_url`` and ``status``.
+    """
+    if config.PIPELINE_MODE == "dry_run":
+        logger.info("github_node: DRY RUN — no repo will be created")
+        return _github_node_dry_run(state)
+    return _github_node_live(state)
+
+
+def _github_node_dry_run(state: PipelineState) -> dict:
+    """Write a local manifest of what would have been committed to GitHub.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict with a placeholder ``github_repo_url`` and ``status``.
+    """
+    repo_name = _project_name_slug(state.get("project_brief", ""))
+    files_to_commit = (
+        state.get("generated_file_paths", []) + state.get("devops_config_paths", [])
+    )
+    manifest_path = Path("output") / repo_name / "GITHUB_DRY_RUN.md"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        f"# Dry run: would create repo '{repo_name}'\n\n"
+        "## Files that would be committed:\n"
+        + "\n".join(f"- {f}" for f in files_to_commit),
+        encoding="utf-8",
+    )
+    logger.info("github_node dry run: manifest written to %s", manifest_path)
+    return {
+        "github_repo_url": f"[dry-run] would create: {repo_name}",
+        "status": "complete",
+    }
+
+
+def _github_node_live(state: PipelineState) -> dict:
     """Publish generated files to a new GitHub repo and open an initial PR.
 
     Reads generated_file_paths and devops_config_paths from state (disk paths),
-    creates a public GitHub repo named after the project brief slug, commits all
-    files to a ``scaffold/initial`` branch, and opens an initial PR against main.
+    creates a GitHub repo named after the project brief slug, commits all files
+    to a ``scaffold/initial`` branch, and opens an initial PR against main.
 
     Args:
         state: The current pipeline state.
