@@ -74,7 +74,7 @@ def run_github(
     repo = user.create_repo(
         slug,
         description=project_brief[:255],
-        private=False,
+        private=True,
         auto_init=True,
     )
 
