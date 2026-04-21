@@ -210,10 +210,3 @@ __marimo__/
 output/
 
 #claude.md
-CLAUDE.md
-context/project_guide_v2.md
-context/DevAssistant_TaskList_v3.md
-AUDIT_REPORT.md
-AUDIT_PROMPT.md
-/context/shared_dependencies.md
-/context/task_queue.json
