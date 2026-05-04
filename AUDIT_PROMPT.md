@@ -24,8 +24,8 @@ the finding as "UNVERIFIED — would require running X" and move on.
 You are doing a READ-ONLY audit of my multi-agent dev assistant codebase.
 
 Ground truth documents (read these first):
-- /context/project_guide_v2.md — full architecture and design rationale
-- /context/DevAssistant_TaskList_v3.md — task-by-task spec with IDs (PRE-xx, MVP-xx, AGT-xx)
+- /context/project_guide_v3.md — full architecture and design rationale
+- /context/DevAssistant_TaskList_v4.md — task-by-task spec with IDs (PRE-xx, MVP-xx, AGT-xx)
 - /context/CONVENTIONS.md — coding standards
 - /context/ARCHITECTURE.md — high-level system overview
 - /context/shared_dependencies.md — cross-file contract manifest

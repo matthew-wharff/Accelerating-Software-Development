@@ -103,86 +103,83 @@ receives:
 **Section 2: Full Architecture Diagram**
 
 Here is the complete pipeline from start to finish. Every section in
-this document references a specific part of this diagram. Two changes
-from a naive pipeline design are visible here: the Coder now shows \'one
-task at a time\' with the Ralph Loop annotation, and the output layer
-includes Stable Context Files on disk.
+this document references a specific part of this diagram. The notable
+additions vs. a naive pipeline: a Workspace Node runs first to create a
+per-run output folder, the Coder follows a Ralph Loop of one task at a
+time, and the output layer now shows two distinct filesystem roles --- a
+per-run workspace for generated artifacts, and a stable read-only
+context/ directory for project-wide conventions.
 
 +-----------------------------------------------------------------------+
 | **MULTI-AGENT DEV ASSISTANT --- FULL PIPELINE**                       |
 +-----------------------------------------------------------------------+
-|   ---------- -----                                                    |
-| -- ----------- ------- ----------- ---------------------------------- |
-|   **📋       **→**   **🔍 SPEC   **→**   **🏗️                         |
-|   PROJECT            CLARIFIER           ARCHITECT                    |
-|   BRIEF              Agent**             Agent**                      |
-|   (User                                                               |
-|   Input)**                                                            |
+|   --------- ------- -------                                           |
+| ---- ------- ----------- ------- ----------- ------------------------ |
 |                                                                       |
-|   ---------- -----                                                    |
-| -- ----------- ------- ----------- ---------------------------------- |
+| **📋      **→**   **📂        **→**   **🔍 SPEC   **→**   **🏗️         |
+|   P                                                                   |
+| ROJECT           WORKSPACE           CLARIFIER           ARCHITECT    |
+|   B                                                                   |
+| RIEF**           Node**              Agent**             Agent**      |
+|                                                                       |
+|   --------- ------- -------                                           |
+| ---- ------- ----------- ------- ----------- ------------------------ |
 +-----------------------------------------------------------------------+
-|   -------------                                                       |
-| - -- ------------ -- ------------- ---------------------------------- |
-|   *Project          *Clarified      *3 Artifacts:                     |
-|   description*      brief*          Manifest                          |
-|                                     Interfaces,                       |
-|                                     Task Queue*                       |
+|   -------- -- -                                                       |
+| ---------- -- ------------- -- ------------- ------------------------ |
+|   *User       *Creates       *Clarifying      *3 artifacts:           |
+|   input*      run            questions*       manifest,               |
+|               folder +                        interfaces,             |
+|               seeds                           task queue*             |
+|               manifest*                                               |
 |                                                                       |
-|   -------------                                                       |
-| - -- ------------ -- ------------- ---------------------------------- |
+|   -------- -- -                                                       |
+| ---------- -- ------------- -- ------------- ------------------------ |
 +-----------------------------------------------------------------------+
 |   -                                                                   |
-| ------------------- ------- ----------------------------------------- |
-|                        **↓**                                          |
+| ----------------------------- ------- ------------------------------- |
+|                                  **↓**                                |
 |                                                                       |
 |   -                                                                   |
-| ------------------- ------- ----------------------------------------- |
+| ----------------------------- ------- ------------------------------- |
 +-----------------------------------------------------------------------+
 |                                                                       |
-|  -------------------- --------------- -- ---------------------------- |
-|                        **💻 CODER         *Ralph Loop: Pick task →    |
+|  --------------------- --------------- -- --------------------------- |
+|                         **💻 CODER         *Ralph Loop: Pick task →   |
+|                         Agent (1 Task      Implement → Validate →     |
+|                         at a Time)**       Write to run code/ dir →   |
+|                                            Reset context → Pick next  |
+|                                            task*                      |
 |                                                                       |
-|                       Agent (1 Task      Implement → Validate → Write |
-|                        at a Time)**       to disk → Reset context →   |
-|                                           Pick next task*             |
 |                                                                       |
-|                                                                       |
-|  -------------------- --------------- -- ---------------------------- |
+|  --------------------- --------------- -- --------------------------- |
 +-----------------------------------------------------------------------+
 |   ---------                                                           |
-| ----------- ------- ------- -------------- -------------------------- |
-|                        **↓**   **→**   **🐳 DEVOPS                    |
-|                                        Agent                          |
-|                                        (Dockerfile,                   |
-|                                        CI/CD)**                       |
+| ------------ ------- ------- -------------- ------------------------- |
+|                         **↓**   **→**   **🐳 DEVOPS                   |
+|                                         Agent                         |
+|                                         (Dockerfile,                  |
+|                                         CI/CD)**                      |
 |                                                                       |
 |   ---------                                                           |
-| ----------- ------- ------- -------------- -------------------------- |
+| ------------ ------- ------- -------------- ------------------------- |
 +-----------------------------------------------------------------------+
-|   -------------------- --------------- ------------------------------ |
-|                        **🔬 e2b                                       |
-|                        SANDBOX                                        |
-|                        (Execute &                                     |
-|                        Capture                                        |
-|                        Output)**                                      |
+|   --------------------- --------------- ----------------------------- |
+|                         **🔬 e2b                                      |
+|                         SANDBOX                                       |
+|                         (Execute &                                    |
+|                         Capture)**                                    |
 |                                                                       |
-|   -------------------- --------------- ------------------------------ |
-+-----------------------------------------------------------------------+
-|   -------------------- --------------- ------------------------------ |
-|                        *Runtime output                                |
-|                        fed to critics*                                |
-|                                                                       |
-|   -------------------- --------------- ------------------------------ |
+|   --------------------- --------------- ----------------------------- |
 +-----------------------------------------------------------------------+
 |   -                                                                   |
-| ------------------- ------- ----------------------------------------- |
-|                        **↓**                                          |
+| -------------------- ------- ---------------------------------------- |
+|                         **↓**                                         |
 |                                                                       |
 |   -                                                                   |
-| ------------------- ------- ----------------------------------------- |
+| -------------------- ------- ---------------------------------------- |
 +-----------------------------------------------------------------------+
-|   ---                                                                 |
+|   ----                                                                |
 | ----------------- ------------- -- ------------- -- ------------- --- |
 |                                                                       |
 |                      **🧪 TEST        **🔒 SECURITY    **✅ CODE      |
@@ -191,59 +188,62 @@ includes Stable Context Files on disk.
 |                                                                       |
 |                      Agent**          Agent**          Agent**        |
 |                                                                       |
-|   ---                                                                 |
+|   ----                                                                |
 | ----------------- ------------- -- ------------- -- ------------- --- |
 +-----------------------------------------------------------------------+
-|   -------------------- ---------------------------------------------  |
-|                        *← Critic Trio runs in parallel                |
-|                        simultaneously →*                              |
+|   --------------------- --------------------------------------------  |
+|                         *← Critic Trio runs in parallel; reports →    |
+|                         run reports/ dir →*                           |
 |                                                                       |
-|   -------------------- ---------------------------------------------  |
+|   --------------------- --------------------------------------------  |
 +-----------------------------------------------------------------------+
 |   -                                                                   |
-| ------------------------- ------- ----------------------------------- |
-|                              **↓**                                    |
+| -------------------------- ------- ---------------------------------- |
+|                               **↓**                                   |
 |                                                                       |
 |   -                                                                   |
-| ------------------------- ------- ----------------------------------- |
+| -------------------------- ------- ---------------------------------- |
 +-----------------------------------------------------------------------+
-|   -------------------- --------------- ------------------------------ |
-|                        **🧠 SYNTHESIS                                 |
-|                        Agent (Context                                 |
-|                        Firewall)**                                    |
+|   --------------------- --------------- ----------------------------- |
+|                         **🧠 SYNTHESIS                                |
+|                         Agent (Context                                |
+|                         Firewall)**                                   |
 |                                                                       |
-|   -------------------- --------------- ------------------------------ |
+|   --------------------- --------------- ----------------------------- |
 +-----------------------------------------------------------------------+
 |   --                                                                  |
-| ------------------ ------- --------------- -------------------------- |
-|                        **↓**   *Revision loop:                        |
-|                                high-severity                          |
-|                                issues route                           |
-|                                back to Coder                          |
-|                                with fresh                             |
-|                                context (max                           |
-|                                2x)*                                   |
+| ------------------- ------- --------------- ------------------------- |
+|                         **↓**   *Revision loop:                       |
+|                                 high-severity                         |
+|                                 issues route                          |
+|                                 back to Coder                         |
+|                                 with fresh                            |
+|                                 context (max                          |
+|                                 2x)*                                  |
 |                                                                       |
 |   --                                                                  |
-| ------------------ ------- --------------- -------------------------- |
+| ------------------- ------- --------------- ------------------------- |
 +-----------------------------------------------------------------------+
 |   -                                                                   |
-| ------------------- ------- ----------------------------------------- |
-|                        **↓**                                          |
+| -------------------- ------- ---------------------------------------- |
+|                         **↓**                                         |
 |                                                                       |
 |   -                                                                   |
-| ------------------- ------- ----------------------------------------- |
+| -------------------- ------- ---------------------------------------- |
 +-----------------------------------------------------------------------+
+|   -------                                                             |
+| --------- ---------------------- -- -------------- -- ----------- --- |
 |                                                                       |
-| -------------------- --------------- -- --------- -- --------- ------ |
-|                        **📁 Generated     **🐙         **📄           |
-|                        Code Files**       GitHub       Stable         |
-|                                           Repo (via    Context        |
-|                                           MCP)**       Files on       |
-|                                                        Disk**         |
+|              **📁 Run Workspace        **📄 Stable       **🐙 GitHub  |
 |                                                                       |
+|              output/\<run_id\>/**      Context           Repo (via    |
 |                                                                       |
-| -------------------- --------------- -- --------- -- --------- ------ |
+|                                        (context/ ---     MCP)**       |
+|                                                                       |
+|                                        read-only)**                   |
+|                                                                       |
+|   -------                                                             |
+| --------- ---------------------- -- -------------- -- ----------- --- |
 +-----------------------------------------------------------------------+
 
 **How to read this diagram:**
@@ -251,21 +251,31 @@ includes Stable Context Files on disk.
 -   Each colored box is one agent (or input/output). The color indicates
     the type of work it does.
 
--   The Architect produces three artifacts (not one spec dump) that
-    control how much context every downstream agent needs.
+-   The Workspace Node runs first, before any agent. It creates a unique
+    output/\<run_id\>/ folder with code/, context/, and reports/
+    subdirectories --- isolating this run from every other run.
+
+-   The Architect produces three artifacts (manifest, interfaces, task
+    queue) that control how much context every downstream agent needs.
+    All three land in the run\'s context/ subfolder, not in project-root
+    context/.
 
 -   The Coder works through one task at a time with a fresh context
-    window per task --- the Ralph Loop.
+    window per task --- the Ralph Loop. Generated files land in the
+    run\'s code/ subfolder.
 
 -   The Critic Trio and DevOps Agent all run simultaneously via
-    LangGraph fan-out.
+    LangGraph fan-out. Their reports land in the run\'s reports/
+    subfolder.
 
 -   The Synthesis Agent acts as a context firewall between the critics
     and any revision --- it compresses three sets of feedback into one
     structured action list.
 
--   Stable Context Files live on disk and are injected into every agent
-    invocation. They are the mechanism for shared knowledge without
+-   Two filesystem roots feed every agent invocation: the stable
+    context/ directory at project root (conventions, architecture docs)
+    and the run-specific context/ subfolder (the Architect\'s manifest
+    and interfaces). Both together supply shared knowledge without
     shared history.
 
   ----------- ----------- ----------- ----------- ----------- -----------
@@ -319,67 +329,80 @@ govern it:
     file path, extracted interface signature) --- not raw LLM
     conversation transcripts.
 
-  ---------------------- ------------------------------------------------
-  **State Field**        **What It Contains**
+Every path field in state points somewhere inside the current run\'s
+workspace (see Section 4). This is what makes concurrent runs and clean
+audits possible.
 
-  project_brief          The original project description you submitted
+  ----------------------- ------------------------------------------------
+  **State Field**         **What It Contains**
 
-  clarified_brief        The brief after the Spec Clarifier asked its
-                         questions
+  project_brief           The original project description you submitted
 
-  architect_spec         The structured spec: tech stack, file structure,
-                         API contracts
+  run_dir                 Absolute path to this run\'s workspace folder
+                          (NEW --- set by workspace_node)
 
-  task_queue             Ordered list of coding tasks from the Architect
+  clarified_brief_path    Path to clarified_brief.md in the run\'s
+                          context/ subfolder
 
-  task_log               Compact completion log: {task_name, status,
-                         file_path, interface_signature}
+  architect_spec_path     Path to ARCHITECT_SPEC.md in the run\'s context/
 
-  generated_code         Dict of {filename: filepath_on_disk} --- paths
-                         only, not content
+  interfaces_path         Path to INTERFACES.py in the run\'s context/
 
-  e2b_output             Runtime output from sandbox execution: {stdout,
-                         stderr, exit_code}
+  shared_deps_path        Path to shared_dependencies.md in the run\'s
+                          context/ (seeded from template)
 
-  synthesis_report       De-duplicated, prioritized action list from the
-                         Synthesis Agent
+  task_queue_path         Path to task_queue.json in the run\'s context/
 
-  devops_config          Dict of {filename: filepath_on_disk} for
-                         Dockerfile, CI/CD config
+  task_log                Compact completion log: {task_name, status,
+                          file_path, interface_signature}
 
-  revision_count         How many revision loops have run (max: 2)
+  generated_code          Dict of {filename: filepath} --- paths inside
+                          run\'s code/ subfolder
 
-  status                 Current pipeline status: running, complete,
-                         failed
-  ---------------------- ------------------------------------------------
+  e2b_output              Runtime output from sandbox execution: {stdout,
+                          stderr, exit_code}
+
+  synthesis_report_path   Path to SYNTHESIS_REPORT.md in the run\'s
+                          reports/ subfolder
+
+  devops_config           Dict of {filename: filepath} --- paths to
+                          Dockerfile, ci.yml, etc.
+
+  revision_count          How many revision loops have run (max: 2)
+
+  status                  Current pipeline status: running, complete,
+                          failed
+  ----------------------- ------------------------------------------------
 
 **2. Nodes**
 
 A node is a Python function that takes the state as input and returns
-updates to the state. Each agent is a node.
+updates to the state. Each agent is a node. There is also one
+infrastructure node --- the workspace_node --- that runs first and
+creates the output folder structure.
 
 +-----------------------------------------------------------------------+
 | \# Example: what a LangGraph node looks like                          |
 |                                                                       |
 | def coder_node(state: PipelineState) -\> dict:                        |
 |                                                                       |
-| \# Read the current task (not the full spec)                          |
+| \# Read the current task and manifest from the run\'s workspace       |
 |                                                                       |
-| task = state\[\'task_queue\'\]\[0\]                                   |
+| task = load_task_queue(state\[\'task_queue_path\'\])\[0\]             |
 |                                                                       |
-| manifest = read_file(SHARED_DEPS_PATH) \# from disk                   |
+| manifest = read_file(state\[\'shared_deps_path\'\])                   |
 |                                                                       |
 | \# Call Claude with scoped context only                               |
 |                                                                       |
 | code = call_claude(task, manifest)                                    |
 |                                                                       |
-| \# Write code to disk, store only the path                            |
+| \# Write code to the run\'s code/ subfolder, store only the path      |
 |                                                                       |
-| path = write_to_disk(task.filename, code)                             |
+| path = Path(state\[\'run_dir\'\]) / \'code\' / task.filename          |
 |                                                                       |
-| \# Return compact update, not the full code                           |
+| path.write_text(code)                                                 |
 |                                                                       |
-| return {\'task_log\': \[{\'task\': task.name, \'path\': path}\]}      |
+| return {\'task_log\': \[{\'task\': task.name, \'path\': str(path)}\]} |
 +-----------------------------------------------------------------------+
 
 **3. Edges and the Send API**
@@ -482,8 +505,10 @@ For each task, the Coder receives exactly this context --- nothing more:
 
 -   The current task description from the Architect\'s ordered queue
 
--   The shared dependency manifest (CONVENTIONS.md and
-    shared_dependencies.md from disk)
+-   The shared dependency manifest for this run (from the run\'s
+    context/ subfolder)
+
+-   Project conventions from the stable context/CONVENTIONS.md
 
 -   Interface definitions relevant to this task only --- not all
     interfaces
@@ -516,59 +541,192 @@ when some arbitrary token count is reached.
 
 After each coding task completes, the Architect extracts the public
 interface of the generated file (exported functions, class signatures,
-type definitions) and adds it to the dependency context available for
-subsequent tasks. The full implementation goes to disk and is never
-re-injected into context.
+type definitions) and appends it to the run\'s shared_dependencies.md.
+The full implementation goes to disk and is never re-injected into
+context.
 
-**Stable Context Files**
+**Two Kinds of Context Files --- Stable vs. Runtime**
 
-Three markdown files live at the project root and are injected into
-every agent invocation. They survive context resets and carry knowledge
-that would otherwise need to be re-derived on every call. The critical
-rule is to keep them concise --- they consume context budget on every
-invocation.
+Context files come in two distinct flavors with opposite lifecycles.
+Conflating them was a source of real bugs (manifest corruption,
+unreliable git tracking) --- the split below is a hard boundary.
+
+  ------------------ -------------------------- --------------------------------
+  **Dimension**      **Stable Context           **Runtime Context
+                     (context/)**               (output/\<run_id\>/context/)**
+
+  Lifecycle          Permanent --- lives for    Ephemeral --- created per
+                     the life of the project    pipeline run, gitignored
+
+  Author             Human-authored, reviewed   Agent-authored, written during
+                     in PRs                     execution
+
+  Git status         Committed                  Ignored (except the .template
+                                                file)
+
+  Purpose            Project-wide conventions   Per-run state, contracts, and
+                     and doctrine               intermediate artifacts
+
+  Lives in           Repo root: context/        Inside the run\'s workspace:
+                                                output/\<run_id\>/context/
+  ------------------ -------------------------- --------------------------------
+
+**Stable Context Files (context/ --- committed to git)**
+
+These markdown files live at the project root in context/ and are
+human-authored. They carry conventions and doctrine that apply to every
+run and every agent. Keep them concise --- they consume context budget
+on every invocation.
+
+  --------------------------------- ------------------------------------------------
+  **File**                          **Contents and Purpose**
+
+  CONVENTIONS.md                    Coding standards, naming, error handling
+                                    patterns, import style, formatting rules.
+                                    Equivalent to .cursorrules or CLAUDE.md. Every
+                                    agent gets this.
+
+  ARCHITECTURE.md                   High-level system overview, module boundaries,
+                                    data flow. Reference only --- not the full spec.
+
+  shared_dependencies.template.md   Empty scaffold (just section headers + bootstrap
+                                    env vars). Seeds the runtime manifest at the
+                                    start of every pipeline run.
+
+  project_guide_v2.md               This document --- the architectural reference.
+
+  DevAssistant_TaskList_v3.md       The full ordered task list for building the
+                                    project itself.
+  --------------------------------- ------------------------------------------------
+
+**Runtime Context Files (output/\<run_id\>/context/ --- per-run,
+gitignored)**
+
+These files are generated fresh for every pipeline run. They hold the
+state and contracts that are specific to that run --- the Architect\'s
+decisions, the Coder\'s progress, the Synthesis Agent\'s output. Because
+they live inside an isolated run folder, concurrent runs cannot clobber
+each other.
 
   ------------------------ ------------------------------------------------
-  **File**                 **Contents and Purpose**
+  **File (per run)**       **Written By / Purpose**
 
-  CONVENTIONS.md           Coding standards, naming conventions, error
-                           handling patterns, import style, formatting
-                           rules. Equivalent to .cursorrules or CLAUDE.md.
-                           Every agent gets this.
+  clarified_brief.md       Spec Clarifier Agent --- brief after clarifying
+                           questions
 
-  shared_dependencies.md   The Architect\'s cross-file contract manifest.
-                           Every shared type, exported function signature,
-                           API contract, data schema, environment variable,
-                           and DOM element ID used across files. Updated
-                           after each coding task completes. This is the
-                           cross-file coherence mechanism.
+  ARCHITECT_SPEC.md        Architect Agent --- full spec document
 
-  ARCHITECTURE.md          High-level system overview, module boundaries,
-                           data flow. Reference only --- not the full spec.
-                           Keeps agents oriented without overwhelming them
-                           with implementation detail.
+  INTERFACES.py            Architect Agent --- type stubs, ABCs, route
+                           signatures
+
+  shared_dependencies.md   Architect Agent seeds it from template; Coder
+                           appends per-task interface signatures
+
+  task_queue.json          Architect Agent --- ordered, topologically
+                           sorted task list
+
+  SYNTHESIS_REPORT.md      Synthesis Agent --- consolidated action list
+                           (lives in reports/, not context/)
   ------------------------ ------------------------------------------------
 
-  -------------- ------------------------------------------------------------
-  **Filesystem   Generated code, dependency manifests, and handoff reports
-  as Shared      all live on disk. Agents read from disk rather than
-  Memory**       receiving artifacts through LangGraph state. This keeps
-                 state objects small, prevents context accumulation, and
-                 means any agent can access any prior output without it being
-                 injected into every context window.
+**The Per-Run Workspace**
 
-  -------------- ------------------------------------------------------------
+Every pipeline run creates a new folder under output/ with three
+subdirectories. Isolating runs this way was a deliberate design choice
+--- it prevents runs from clobbering each other, makes audits and diffs
+easy, and mirrors standard build-system conventions (Bazel, CMake,
+Cargo).
+
++-----------------------------------------------------------------------+
+| output/                                                               |
+|                                                                       |
+| └── \<run_id\>/ \# e.g. 2026-04-20T14-32-build-todo-app               |
+|                                                                       |
+| │ \# (format is illustrative --- any unique id works)                 |
+|                                                                       |
+| ├── context/ \# runtime context files                                 |
+|                                                                       |
+| │ ├── clarified_brief.md                                              |
+|                                                                       |
+| │ ├── ARCHITECT_SPEC.md                                               |
+|                                                                       |
+| │ ├── INTERFACES.py                                                   |
+|                                                                       |
+| │ ├── shared_dependencies.md                                          |
+|                                                                       |
+| │ └── task_queue.json                                                 |
+|                                                                       |
+| ├── code/ \# generated code (stripped of prefix on GitHub push)       |
+|                                                                       |
+| │ ├── main.py                                                         |
+|                                                                       |
+| │ └── models.py                                                       |
+|                                                                       |
+| └── reports/ \# critic outputs                                        |
+|                                                                       |
+| ├── test_feedback.md                                                  |
+|                                                                       |
+| ├── security_report.md                                                |
+|                                                                       |
+| ├── quality_report.md                                                 |
+|                                                                       |
+| └── SYNTHESIS_REPORT.md                                               |
++-----------------------------------------------------------------------+
+
+  ------------- ------------------------------------------------------------
+  **Workspace   A workspace_node runs first in the graph --- before Spec
+  Node**        Clarifier. Its job is to create the run folder, create the
+                three subdirectories, seed shared_dependencies.md from the
+                template, and set run_dir plus the path fields on state.
+                Every subsequent agent reads those paths from state rather
+                than hardcoding directory names.
+
+  ------------- ------------------------------------------------------------
+
+**Filesystem as Shared Memory**
+
+Generated code, runtime manifests, and handoff reports live on disk
+inside the run folder. Stable conventions live on disk in the
+project-root context/ directory. Agents read from disk rather than
+receiving artifacts through LangGraph state. This keeps state objects
+small, prevents context accumulation, and means any agent can access any
+prior output without it being injected into every context window.
 
 **Report-File Handoffs**
 
 When one agent\'s output feeds another, the handoff is a structured
 markdown report file --- not raw conversation history. For example, the
-Synthesis Agent writes SYNTHESIS_REPORT.md, and the Coder on a revision
-pass reads that file.
+Synthesis Agent writes SYNTHESIS_REPORT.md into the run\'s reports/
+folder, and the Coder on a revision pass reads that file.
 
 This pattern compresses context naturally. A 3000-token critic
 conversation becomes a 200-token action list. The receiving agent starts
 fresh with only the signal it needs.
+
+**The GitHub Code/ Prefix Strip**
+
+Generated code lives at output/\<run_id\>/code/main.py during the run
+--- the code/ folder is a pipeline-internal artifact layout. When the
+GitHub MCP node commits to a new repo, it strips the code/ prefix so
+files land at the repo root (main.py, not code/main.py). Without
+stripping, an import like from models import User would break because
+the user would find code/models.py at the repo root and import models
+would fail.
+
+**PIPELINE_MODE --- A Planned Safeguard**
+
+  ------------ ------------------------------------------------------------
+  **Deferred   PIPELINE_MODE is not implemented yet but is planned before
+  Work**       Phase 1B hardening. When implemented, it will default to
+               dry_run, which prevents destructive side effects (GitHub
+               repo creation, real API calls where unnecessary) during
+               audits and test runs. Live execution requires explicit
+               opt-in via PIPELINE_MODE=live. The motivation: five real
+               GitHub repos were created during a single audit session
+               because the pipeline was executed to \'verify\' claims.
+               Fail-safe defaults prevent that category of bug.
+
+  ------------ ------------------------------------------------------------
 
 **Resources: Context Management**
 
@@ -587,28 +745,34 @@ reference)]{.underline}](https://github.com/smol-ai/developer)
 **Section 5: Input Processing --- Spec Clarifier & Architect Agents**
 
 +-----------------------------------------------------------------------+
-| **📍 DIAGRAM FOCUS: Spec Clarifier Agent → Architect Agent**          |
+| **📍 DIAGRAM FOCUS: Workspace Node → Spec Clarifier → Architect**     |
 |                                                                       |
-| The two agents that run before any code is written. The Spec          |
-| Clarifier eliminates brief ambiguity. The Architect converts the      |
-| clarified brief into three specific artifacts that control how much   |
-| context every downstream agent needs.                                 |
+| These run before any code is written. The Workspace Node creates the  |
+| per-run folder. The Spec Clarifier eliminates brief ambiguity. The    |
+| Architect converts the clarified brief into three specific artifacts  |
+| that control how much context every downstream agent needs --- all    |
+| written into the run\'s context/ subfolder.                           |
 +-----------------------------------------------------------------------+
 
 **The Spec Clarifier Agent**
 
-Runs first. Asks 3--5 targeted questions that eliminate the most
-important ambiguities in the brief. Good clarifying questions address
-technical decisions that are hard to change later: authentication type,
-database choice, API design, expected scale.
+Runs after the workspace is created. Asks 3--5 targeted questions that
+eliminate the most important ambiguities in the brief. Good clarifying
+questions address technical decisions that are hard to change later:
+authentication type, database choice, API design, expected scale.
+
+The Spec Clarifier writes its output to clarified_brief.md in the run\'s
+context/ subfolder and stores the path in
+state\[\'clarified_brief_path\'\]. It does not hold the brief content in
+state --- paths, not contents.
 
   ---------------------- ------------------------------------------------
   **Property**           **Detail**
 
-  Input                  Raw project brief
+  Input                  Raw project brief, run_dir from state
 
-  Output                 Structured dict of {question: answer} pairs that
-                         all downstream agents reference
+  Output                 clarified_brief.md at \<run_dir\>/context/, path
+                         stored in state\[\'clarified_brief_path\'\]
 
   Model                  Claude Sonnet
 
@@ -623,19 +787,25 @@ specific artifacts that collectively determine how much context every
 downstream agent needs. These are not optional. They are the
 architecture.
 
-**Artifact 1: Shared Dependency Manifest (shared_dependencies.md)**
+All three artifacts land in the run\'s context/ subfolder. The Architect
+does NOT write to the project-root context/ directory --- that\'s
+reserved for stable, human-authored files.
+
+**Artifact 1: Shared Dependency Manifest
+(\<run_dir\>/context/shared_dependencies.md)**
 
 Every shared type, exported function signature, API contract, data
 schema, environment variable, and DOM element ID used across more than
 one file. This file travels with every Coder invocation as the
 cross-file coherence mechanism.
 
-The Coder uses it to know: what does the database layer export? What
-type does the authentication function return? What environment variables
-does the app expect? Without this manifest, the Coder guesses --- and
-guesses accumulate into cross-file inconsistencies.
+At the start of the run, this file is seeded from
+context/shared_dependencies.template.md (stable, project-root). The
+Architect populates the initial structure; the Coder appends the public
+interface of each file after implementing it.
 
-**Artifact 2: Interface Definitions**
+**Artifact 2: Interface Definitions
+(\<run_dir\>/context/INTERFACES.py)**
 
 Generated in a first pass before any implementation code is written.
 Type stubs, abstract base classes, API route signatures, database model
@@ -652,7 +822,7 @@ invent them.
 
   ---------------- ------------------------------------------------------------
 
-**Artifact 3: Ordered Task Queue**
+**Artifact 3: Ordered Task Queue (\<run_dir\>/context/task_queue.json)**
 
 A topologically sorted list of file-level coding tasks derived from the
 project\'s import and dependency graph. Files with zero external
@@ -661,7 +831,8 @@ those dependencies exist.
 
 Each task entry in the queue contains:
 
--   Target file path
+-   Target file path (relative --- resolved against \<run_dir\>/code/ at
+    write time)
 
 -   The relevant section of the spec for this file only (not the full
     spec)
@@ -682,10 +853,12 @@ loop, not a one-time waterfall handoff.
   ---------------------- ------------------------------------------------
   **Property**           **Detail**
 
-  Input                  Clarified brief + answers from Spec Clarifier
+  Input                  clarified_brief_path from state, plus stable
+                         CONVENTIONS.md / ARCHITECTURE.md
 
-  Output                 Three artifacts: shared_dependencies.md,
-                         interface definitions, ordered task queue
+  Output                 Four files in \<run_dir\>/context/:
+                         ARCHITECT_SPEC.md, INTERFACES.py,
+                         shared_dependencies.md, task_queue.json
 
   Model                  Claude Sonnet --- reasoning-heavy, single most
                          important prompt in the pipeline
@@ -717,8 +890,9 @@ Techniques]{.underline}](https://docs.anthropic.com/en/docs/build-with-claude/pr
 | Time**                                                                |
 |                                                                       |
 | The Coder implements the codebase against the Architect\'s spec ---   |
-| one task at a time with a fresh context window per task. This section |
-| explains the Ralph Loop pattern, why single-agent design wins over    |
+| one task at a time with a fresh context window per task. Generated    |
+| code lands in the run\'s code/ subfolder. This section explains the   |
+| Ralph Loop pattern, why single-agent design wins over                 |
 | parallelization, and how failure escalation works.                    |
 +-----------------------------------------------------------------------+
 
@@ -731,8 +905,8 @@ enforces context isolation automatically:
   ---------------------- ------------------------------------------------
   **Ralph Loop Step**    **What Happens**
 
-  1\. Pick Task          Reads the next task from the Architect\'s
-                         ordered queue
+  1\. Pick Task          Reads the next task from
+                         \<run_dir\>/context/task_queue.json
 
   2\. Implement          Calls Claude with scoped context: task +
                          manifest + relevant interfaces + prior file
@@ -741,11 +915,12 @@ enforces context isolation automatically:
   3\. Validate           Runs basic validation (syntax check, linting) on
                          the generated file
 
-  4\. Write to Disk      If valid, writes the file to /output/. Extracts
-                         the public interface signature.
+  4\. Write to Disk      If valid, writes to
+                         \<run_dir\>/code/\<filename\>. Extracts the
+                         public interface signature.
 
-  5\. Update Manifest    Adds the new file\'s exported interface to
-                         shared_dependencies.md
+  5\. Update Manifest    Appends the new file\'s exported interface to
+                         \<run_dir\>/context/shared_dependencies.md
 
   6\. Reset Context      Clears conversation history. The next task
                          starts completely fresh.
@@ -754,9 +929,9 @@ enforces context isolation automatically:
                          queue
   ---------------------- ------------------------------------------------
 
-Continuity between tasks lives in the filesystem and the Architect\'s
-state --- not in the Coder\'s context window. The Coder is stateless
-between tasks by design.
+Continuity between tasks lives in the filesystem (the run\'s context/
+subfolder and code/ subfolder) --- not in the Coder\'s context window.
+The Coder is stateless between tasks by design.
 
 **Why a Single Agent?**
 
@@ -812,11 +987,11 @@ itself is the problem, not the implementation.
 
 **The e2b Sandbox Connection**
 
-Before the Critic Trio sees the code, the full generated codebase is
-executed in an e2b sandbox. The runtime output --- stdout, stderr, exit
-code --- is stored in state and passed to all three critics. Critics
-reviewing code that has actually run produce significantly better
-feedback than critics reviewing static code alone.
+Before the Critic Trio sees the code, the contents of the run\'s code/
+subfolder are executed in an e2b sandbox. The runtime output --- stdout,
+stderr, exit code --- is stored in state and passed to all three
+critics. Critics reviewing code that has actually run produce
+significantly better feedback than critics reviewing static code alone.
 
 **Resources: Coder Agent**
 
@@ -841,9 +1016,10 @@ origin)]{.underline}](https://github.com/smol-ai/developer)
 | DevOps Agent --- All Parallel**                                       |
 |                                                                       |
 | Four agents run simultaneously after the Coder finishes. Three        |
-| critics independently review from different angles --- each receiving |
-| only the context relevant to its specific job. The DevOps Agent works |
-| in parallel from the spec to produce infrastructure files.            |
+| critics independently review from different angles. The DevOps Agent  |
+| works in parallel from the spec to produce infrastructure files. All  |
+| outputs land in the run\'s reports/ subfolder (or are tracked in      |
+| state for commit).                                                    |
 +-----------------------------------------------------------------------+
 
 **Context Isolation Across the Critics**
@@ -855,23 +1031,23 @@ what it needs:
   ------------------ -------------------------- --------------------------
   **Agent**          **Receives**               **Does NOT Receive**
 
-  Test Writer        Implementation files +     Security findings, quality
-                     interface defs + shared    notes, Dockerfile
-                     dependency manifest + e2b  
+  Test Writer        Code files from            Security findings, quality
+                     \<run_dir\>/code/ +        notes, Dockerfile
+                     interfaces +               
+                     shared_deps_path + e2b     
                      output                     
 
-  Security Reviewer  Implementation files +     Test files, quality notes,
-                     dependency manifest +      e2b output
-                     environment variable       
+  Security Reviewer  Code files +               Test files, quality notes,
+                     shared_deps_path + env var e2b output
                      definitions                
 
-  Code Quality Agent Implementation files +     Test files, security
-                     project conventions        findings, DevOps config
-                     (CONVENTIONS.md)           
+  Code Quality Agent Code files + stable        Test files, security
+                     context/CONVENTIONS.md     findings, DevOps config
 
-  DevOps Agent       File tree + shared         Implementation source
-                     dependency manifest +      code, any critic output
-                     project conventions        
+  DevOps Agent       File tree of               Implementation source
+                     \<run_dir\>/code/ +        code, any critic output
+                     shared_deps_path +         
+                     CONVENTIONS.md             
   ------------------ -------------------------- --------------------------
 
 The DevOps Agent deliberately does not receive implementation source
@@ -886,8 +1062,9 @@ internally.
 
   Model                  Claude Haiku
 
-  Output                 Dict of {test_filename: test_code} --- pytest
-                         unit and integration tests
+  Output                 Dict of {test_filename: test_code} written to
+                         \<run_dir\>/code/tests/; feedback summary to
+                         \<run_dir\>/reports/test_feedback.md
 
   Mindset                QA engineer trying to break the code. Red-team
                          the implementation.
@@ -913,8 +1090,9 @@ internally.
 
   Model                  Claude Haiku
 
-  Output                 Structured list: \[{severity: high/medium/low,
-                         issue, location, remediation}\]
+  Output                 Report written to
+                         \<run_dir\>/reports/security_report.md ---
+                         \[{severity, issue, location, remediation}\]
 
   Mindset                OWASP Top 10 mindset. Assume the code will be
                          attacked.
@@ -939,7 +1117,8 @@ internally.
 
   Model                  Claude Haiku
 
-  Output                 List of findings: {category, issue, location,
+  Output                 Report at \<run_dir\>/reports/quality_report.md
+                         --- list of {category, issue, location,
                          suggestion}
 
   Mindset                Senior engineer doing a pull request review
@@ -965,7 +1144,8 @@ internally.
                          knowledge
 
   Output                 Dockerfile, .github/workflows/ci.yml,
-                         .env.example, docker-compose.yml
+                         .env.example, docker-compose.yml written into
+                         \<run_dir\>/code/
 
   Runs in parallel with  Critic Trio --- it does not depend on any review
                          results
@@ -1027,20 +1207,20 @@ resolves this:
   ---------------------- ------------------------------------------------
   **Property**           **Detail**
 
-  Input                  test_feedback + security_feedback +
-                         quality_feedback from state
+  Input                  Reads three critic reports from
+                         \<run_dir\>/reports/ (test_feedback.md,
+                         security_report.md, quality_report.md)
 
-  Output                 Structured JSON: {has_critical_issues: bool,
-                         actions: \[{priority, issue, location,
-                         action}\]}
+  Output                 Structured JSON in state; full report written to
+                         \<run_dir\>/reports/SYNTHESIS_REPORT.md
 
   Model                  Claude Sonnet --- synthesis requires reasoning
                          to resolve conflicts across three formats
 
   File                   agents/synthesis.py
 
-  Also writes            SYNTHESIS_REPORT.md to disk --- the handoff file
-                         the Coder reads on a revision pass
+  State field            synthesis_report_path --- path to
+                         SYNTHESIS_REPORT.md
   ---------------------- ------------------------------------------------
 
 **The Revision Loop**
@@ -1049,8 +1229,9 @@ resolves this:
   **Condition**          **Routing Decision**
 
   has_critical_issues =  Route back to Coder. Coder reads
-  true AND               SYNTHESIS_REPORT.md, starts the Ralph Loop fresh
-  revision_count \< 2    with the action list as additional context.
+  true AND               SYNTHESIS_REPORT.md from the run\'s reports/,
+  revision_count \< 2    starts the Ralph Loop fresh with the action list
+                         as additional context.
 
   has_critical_issues =  Route to output. Accept the current state,
   false OR               proceed to GitHub MCP.
@@ -1070,8 +1251,25 @@ resolves this:
 **GitHub MCP Integration**
 
 After the pipeline resolves (post-revision-loop), a final node uses the
-GitHub MCP server to create a real GitHub repository and push all
+GitHub MCP server to create a real GitHub repository and push the
 generated files.
+
+Critical detail: the node reads from \<run_dir\>/code/ and strips the
+code/ prefix before committing. Files land at the repo root. This is why
+generated imports (like from models import User) work correctly in the
+delivered repo --- a commit of code/models.py would break those imports.
+
+Reports and runtime context (reports/ and context/ subfolders) are not
+committed --- they\'re pipeline-internal artifacts.
+
+  ----------------- ------------------------------------------------------------
+  **PIPELINE_MODE   The GitHub MCP node must respect PIPELINE_MODE once
+  Guard (planned)** implemented. In dry_run mode (default), it should log the
+                    intended action and skip the actual repo creation. This
+                    prevents the \'five real repos got created during an audit\'
+                    failure mode.
+
+  ----------------- ------------------------------------------------------------
 
   ---------- ------------------------------------------------------------
   **What is  MCP (Model Context Protocol) is a standard that lets Claude
@@ -1112,21 +1310,28 @@ Phase 1A is the foundation. The remaining phases build on it in order.
 
 -   Testing: unit tests per agent (mocked API calls), integration tests
     for the full graph, edge case tests (empty brief, 5000-word brief,
-    prompt injection attempt, SQL injection patterns in the brief)
+    prompt injection attempt, SQL injection patterns)
 
 -   Optimization: profile token usage per agent, confirm model
-    assignments (Haiku vs Sonnet are used where intended), measure and
+    assignments (Haiku vs Sonnet used where intended), measure and
     document actual cost per pipeline run
 
 -   Security: audit prompts for injection risk, validate no secrets
     appear in logs, confirm e2b sandbox is truly isolated, verify GitHub
     PAT uses minimum required permissions only
 
+-   Implement PIPELINE_MODE (dry_run default, live opt-in) and wire it
+    into the GitHub node and any other write-side-effects
+
+-   Audit fixtures: tests that mock writes should mock
+    output/\<run_id\>/ paths, not the project-root context/
+
   ---------- ------------------------------------------------------------
   **Phase 1B You may not start Phase 2 until: test suite passes with
   Gate**     meaningful coverage, at least one non-obvious bug was found
-             and fixed, cost per run is documented, and
-             PHASE_1B_SIGNOFF.md exists and has been committed.
+             and fixed, cost per run is documented, PIPELINE_MODE is
+             implemented, and PHASE_1B_SIGNOFF.md exists and has been
+             committed.
 
   ---------- ------------------------------------------------------------
 
@@ -1147,13 +1352,24 @@ Phase 1A is the foundation. The remaining phases build on it in order.
     cost at 10, 100, and 1000 runs/day for AWS, GCP, and Railway
 
 3.  Expose as a REST API using FastAPI: POST /run-pipeline, GET
-    /status/{job_id}, GET /result/{job_id}, GET /health
+    /status/{job_id}, GET /result/{job_id} (returns the run_dir path or
+    a zip of the run folder), GET /health
 
 4.  Add API key authentication --- static key check, not JWT at this
     stage
 
 5.  Deploy, configure structured logging, and set up alerting for
     failure rates
+
+  ---------- ------------------------------------------------------------
+  **Volume   In the container: mount output/ as a writable volume (or
+  Mounts     back it with cloud storage). Mount context/ as read-only.
+  Matter**   The stable/runtime split makes this trivial --- the boundary
+             is a literal directory boundary. Also consider UUID suffixes
+             on run folders to prevent collisions under concurrent API
+             requests.
+
+  ---------- ------------------------------------------------------------
 
 **Phase 3: iPhone App**
 
@@ -1173,8 +1389,9 @@ Phase 1A is the foundation. The remaining phases build on it in order.
 8.  Progress tracking --- poll GET /status/{job_id} every 3 seconds,
     navigate automatically on completion
 
-9.  Output display --- show GitHub URL, generated file list, synthesis
-    report summary
+9.  Output display --- show GitHub URL, generated file list (the run\'s
+    code/ subfolder maps cleanly to a file browser), synthesis report
+    summary
 
 10. End-to-end on a physical iPhone --- submit a real brief, receive a
     working repo
@@ -1202,58 +1419,65 @@ Documentation]{.underline}](https://reactnative.dev/docs/getting-started)
 **Section 10: Where to Start --- The Weekend MVP**
 
 +-----------------------------------------------------------------------+
-| **📍 DIAGRAM FOCUS: MVP Scope: Brief → Coder (single task) → Critic → |
-| File Output**                                                         |
+| **📍 DIAGRAM FOCUS: MVP Scope: Workspace → Coder (one task) → Critic  |
+| → File Output**                                                       |
 |                                                                       |
 | The smallest version that proves the loop works. One Coder task, one  |
-| Critic, file output. Even at this stage, the Coder should receive a   |
-| scoped task --- not a full spec --- to establish the right habit from |
-| the start.                                                            |
+| Critic, file output into a proper run workspace. Even at this stage,  |
+| the Coder should receive a scoped task --- not a full spec --- and    |
+| writes should land in output/\<run_id\>/code/ to establish the right  |
+| habits from the start.                                                |
 +-----------------------------------------------------------------------+
 
 The full pipeline is complex. Building it all at once is a path to
 getting lost. The MVP has one goal: prove the loop works and that the
-context isolation pattern is correctly implemented.
+stable/runtime split and context isolation pattern are correctly
+implemented.
 
   ---------------------- ------------------------------------------------
   **MVP Step**           **What You Build**
 
   MVP-01                 Define the shared LangGraph state schema
-                         (state/schema.py) --- paths not contents
+                         (state/schema.py) --- include run_dir and path
+                         fields from the start
 
-  MVP-02                 Build a minimal Coder Agent --- receives a
-                         single task description, returns one file\'s
-                         code
+  MVP-02                 Build scripts/workspace.py + workspace_node ---
+                         creates
+                         output/\<run_id\>/{code,context,reports}/, seeds
+                         manifest from template
 
-  MVP-03                 Build a minimal Critic Agent --- takes code
-                         string, returns feedback string
+  MVP-03                 Build a minimal Coder Agent --- receives a
+                         single task description, writes to
+                         \<run_dir\>/code/
 
-  MVP-04                 Wire both into a LangGraph graph: Coder → Critic
-                         → Output. Run it.
+  MVP-04                 Build a minimal Critic Agent --- reads a file
+                         path, writes feedback to \<run_dir\>/reports/
 
-  MVP-05                 Write generated code to disk in /output/. Coder
-                         returns a filepath, not the code in state.
+  MVP-05                 Wire into a LangGraph graph: workspace → coder →
+                         critic → END. Run it.
 
-  MVP-06                 Run with a real brief, review output files,
+  MVP-06                 Run with a real brief, inspect the run folder,
                          document what worked and what didn\'t
   ---------------------- ------------------------------------------------
 
   ----------- ------------------------------------------------------------
   **The MVP   The MVP will produce imperfect code. That is fine. The point
-  Mindset**   is: LangGraph runs, Claude responds, state stays small,
-              files land on disk. If the MVP works with correct context
-              isolation (scoped task, no accumulated history), the
-              architecture is proven.
+  Mindset**   is: LangGraph runs, Claude responds, state stays small, the
+              workspace folder structure materializes correctly, files
+              land in the right subdirectories. If the MVP works with
+              correct structure and context isolation, the architecture is
+              proven.
 
   ----------- ------------------------------------------------------------
 
 **Environment Setup --- Before Any Code**
 
--   Python 3.11+ via pyenv (do not use system Python)
+-   Python 3.11+ via pyenv (do not use system Python; on Linux, use
+    python3)
 
 -   VS Code with Python extension, Pylance, Ruff linter, GitLens
 
--   GitHub repo with SSH auth, .gitignore configured
+-   GitHub repo with SSH auth, .gitignore configured to include output/
 
 -   Python virtual environment (.venv), activated, in .gitignore
 
@@ -1308,71 +1532,74 @@ Documentation]{.underline}](https://saurabh-kumar.com/python-dotenv/)
                      whole system: decompose before generating, isolate
                      by default, compress at boundaries.
 
-  **2. Diagram**     The updated pipeline adds: the Ralph Loop annotation
-                     on the Coder, the e2b sandbox as an explicit step
-                     before critics, \'one task at a time\' framing on
-                     the Coder, and Stable Context Files as a distinct
-                     output. The Architect\'s label now shows three
-                     artifacts, not one spec.
+  **2. Diagram**     The pipeline now shows a Workspace Node running
+                     first to create a per-run output folder, the Ralph
+                     Loop annotation on the Coder, the e2b sandbox as an
+                     explicit step before critics, and a two-part output
+                     layer: a per-run workspace (code, runtime context,
+                     reports) and a stable read-only context/ directory.
 
-  **3. LangGraph**   LangGraph manages state, nodes, and edges. The state
-                     is intentionally lean: file paths not file contents,
-                     compact task logs not conversation history. The Send
-                     API creates isolated state for parallel critic
-                     branches. Conditional edges drive the revision loop.
+  **3. LangGraph**   LangGraph manages state, nodes, and edges. State
+                     holds paths to files inside the run\'s workspace ---
+                     not file contents. The Send API creates isolated
+                     state for parallel critic branches. Conditional
+                     edges drive the revision loop. Path fields (run_dir,
+                     shared_deps_path, task_queue_path, etc.) are set by
+                     the workspace_node on pipeline start.
 
-  **4. Context       A new dedicated section. Covers the three governing
-  Management**       rules in detail, the Stable Context Files
-                     (CONVENTIONS.md, shared_dependencies.md,
-                     ARCHITECTURE.md), filesystem-as-shared-memory, and
-                     report-file handoffs between agents. This is the
-                     foundational section --- every other section
-                     references back to it.
+  **4. Context       Two distinct kinds of context files with opposite
+  Management**       lifecycles. Stable context (project-root context/,
+                     committed to git, human-authored) carries
+                     conventions. Runtime context
+                     (output/\<run_id\>/context/, gitignored,
+                     agent-authored) carries per-run state. A
+                     workspace_node creates the run folder and seeds the
+                     manifest from a template. The GitHub MCP node strips
+                     the code/ prefix on commit. PIPELINE_MODE is a
+                     planned safeguard to fail safe on destructive
+                     actions.
 
-  **5. Spec          The Architect produces three specific artifacts ---
-  Clarifier &        not one spec dump. The Shared Dependency Manifest is
-  Architect**        the cross-file coherence mechanism. Interface
-                     Definitions are generated first (before any
-                     implementation), mirroring the C
-                     header/implementation split. The Ordered Task Queue
-                     is topologically sorted by dependency graph. The
-                     Architect also runs a feedback loop after each
-                     coding task.
+  **5. Spec          The Architect produces three artifacts --- all
+  Clarifier &        written into the run\'s context/ subfolder:
+  Architect**        shared_dependencies.md (seeded from template),
+                     INTERFACES.py (C-header-style contracts), and
+                     task_queue.json (topologically sorted). The Spec
+                     Clarifier writes its output to disk and stores the
+                     path in state, not the content.
 
   **6. Coder Agent** The Ralph Loop: pick task → implement → validate →
-                     write to disk → extract interface → reset context →
-                     repeat. Fresh context per task solves the 19%
-                     problem. Failure escalation (3+ failures) routes to
-                     the Architect for task re-scoping, not more Coder
-                     retries. Explicit list of what the Coder does NOT
-                     receive.
+                     write to \<run_dir\>/code/ → extract interface →
+                     append to \<run_dir\>/context/shared_dependencies.md
+                     → reset context → repeat. Fresh context per task
+                     solves the 19% problem. Failure escalation (3+
+                     failures) routes to the Architect for task
+                     re-scoping.
 
-  **7. Critic Trio + Each critic receives scoped context matching its job
-  DevOps**           --- not the full codebase. The DevOps Agent works
-                     from spec and file tree only, not source code.
+  **7. Critic Trio + Each critic receives scoped context matching its
+  DevOps**           job. Reports are written to \<run_dir\>/reports/.
+                     The DevOps Agent works from spec and file tree only.
                      Context isolation is the mechanism that makes
                      parallelism safe and output quality high.
 
   **8. Synthesis     The context firewall between critics and revision
-  Agent**            cycles. Compresses three feedback streams into one
-                     structured action list via SYNTHESIS_REPORT.md on
-                     disk. has_critical_issues drives the conditional
-                     routing. Max 2 revision loops prevents infinite
-                     cycling.
+  Agent**            cycles. Reads from \<run_dir\>/reports/ and writes
+                     SYNTHESIS_REPORT.md there. has_critical_issues
+                     drives the conditional routing. Max 2 revision
+                     loops. GitHub MCP node strips the code/ prefix;
+                     reports/ and context/ are not committed.
 
-  **9. Phases        Phase 1B is a formal hardening gate --- no Phase 2
-  1B/2/3**           until PHASE_1B_SIGNOFF.md exists. Phase 2
-                     containerizes and hosts the pipeline as an
-                     authenticated REST API. Phase 3 is a deliberate
-                     React Native learning project, built screen by
-                     screen from smallest to largest.
+  **9. Phases        Phase 1B adds PIPELINE_MODE implementation as a gate
+  1B/2/3**           requirement. Phase 2 benefits from the
+                     stable/runtime split --- context/ mounts read-only,
+                     output/ mounts writable. /result/{job_id} can return
+                     a zip of the run folder. Phase 3 maps the code/
+                     subfolder cleanly to a UI file browser.
 
-  **10. Weekend      The starting point. A single scoped Coder task, one
-  MVP**              Critic, file output to disk. The MVP enforces
-                     context isolation from the first line of code. If it
-                     works --- small state, scoped context, files on disk
-                     --- the architecture is proven and expansion can
-                     begin.
+  **10. Weekend      The starting point now includes the workspace node
+  MVP**              from day one. Build scripts/workspace.py first, then
+                     coder/critic that read and write inside \<run_dir\>.
+                     Establishing the right folder structure from step
+                     one is cheaper than retrofitting it later.
   ------------------ ----------------------------------------------------
 
 +-----------------------------------------------------------------------+
@@ -1388,17 +1615,22 @@ Documentation]{.underline}](https://saurabh-kumar.com/python-dotenv/)
 | pollution --- not model capability --- is what causes AI code         |
 | generation to fail. The 87%/19% accuracy gap between single-function  |
 | and multi-file tasks is the design constraint that shapes everything. |
-| The Architect produces three artifacts (not one spec) to minimize     |
-| each downstream agent\'s context. The Coder uses the Ralph Loop to    |
-| work through one task at a time with a fresh context window. Stable   |
-| Context Files on disk carry shared knowledge without accumulating     |
-| history. The Synthesis Agent compresses three critics\' output into   |
-| one action list before any revision cycle.                            |
+| Context files come in two flavors: stable conventions live in         |
+| project-root context/ and are committed to git; runtime per-run state |
+| lives in output/\<run_id\>/context/ and is gitignored. The Architect  |
+| produces three artifacts into the run workspace; the Coder\'s Ralph   |
+| Loop writes code into \<run_dir\>/code/ one file at a time; critics   |
+| write reports into \<run_dir\>/reports/. The Synthesis Agent          |
+| compresses three critics\' output into one action list before any     |
+| revision cycle.                                                       |
 |                                                                       |
 | LangGraph orchestrates it all: conditional revision loops, parallel   |
 | fan-out with the Send API, and a state object designed to hold file   |
-| paths and compact logs --- not file contents and conversation         |
-| history. Claude Sonnet handles reasoning-heavy work. Claude Haiku     |
+| paths and compact logs. A workspace_node runs first to create the     |
+| per-run folder structure. The GitHub MCP node strips the code/ prefix |
+| when committing so delivered repos have correct imports.              |
+| PIPELINE_MODE is a planned safeguard to make destructive actions      |
+| opt-in. Claude Sonnet handles reasoning-heavy work. Claude Haiku      |
 | handles review tasks at lower cost. MCP connects to GitHub. e2b       |
 | ensures generated code actually runs before critics review it.        |
 +-----------------------------------------------------------------------+

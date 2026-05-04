@@ -1,6 +1,7 @@
 **Multi-Agent Dev Assistant**
 
-Complete Project Task List · Phase 1A → 1B → 2 → 3 · From Zero to iPhone
+Complete Project Task List --- v4 · Phase 1A → 1B → 2 → 3 · From Zero to
+iPhone
 
 **How to Use This Document**
 
@@ -10,6 +11,13 @@ description of what to do and why, the specific technologies and
 packages required, and direct links to all relevant documentation. Work
 through tasks in ID order within each section --- dependencies flow
 downward.
+
+*v4 changes: reflects the Context Folder Refactor that separates stable
+project context (/context/, committed to git) from runtime pipeline
+artifacts (/output/\<run_id\>/, gitignored). Introduces PRE-14
+(workspace bootstrap) and HRD-11 (PIPELINE_MODE env var). 12 existing
+tasks updated to read paths from state rather than hardcoding /context/
+paths for runtime artifacts.*
 
   ---------- ------------------------------------------------------------
   **ID       **What it means**
@@ -57,8 +65,6 @@ downward.
 | Do NOT rely on the system Python --- it causes environment issues     |
 | that waste hours.                                                     |
 +-----------------------------------------------------------------------+
-| Depends on: None --- start here                                       |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Python 3.11+, pyenv, pip                                              |
@@ -76,6 +82,8 @@ downward.
 | >                                                                     |
 | > → [[python.org downloads                                            |
 | > (fallback)]{.underline}](https://www.python.org/downloads/)         |
++-----------------------------------------------------------------------+
+| **Depends on:** None --- start here                                   |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -99,8 +107,6 @@ downward.
 | Confirm Ruff is formatting on save by adding a space somewhere and    |
 | saving --- it should auto-fix.                                        |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-01                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | VS Code, Python extension, Pylance, Ruff, GitLens                     |
@@ -122,6 +128,8 @@ downward.
 | nderline}](https://code.visualstudio.com/docs/python/python-tutorial) |
 | >                                                                     |
 | > → [[Ruff docs]{.underline}](https://docs.astral.sh/ruff/)           |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-01                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -147,8 +155,6 @@ downward.
 | Make your first commit with just the README so the repo is            |
 | initialized.                                                          |
 +-----------------------------------------------------------------------+
-| Depends on: None                                                      |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Git, GitHub, SSH keys (ed25519)                                       |
@@ -170,6 +176,8 @@ downward.
 | > → [[Git first-time                                                  |
 | > setup]{.underline}]                                                 |
 | (https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup) |
++-----------------------------------------------------------------------+
+| **Depends on:** None                                                  |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -200,8 +208,6 @@ downward.
 | VS Code can do this automatically --- set                             |
 | python.defaultInterpreterPath to ./.venv/bin/python.                  |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-01, PRE-03                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Python venv module, .gitignore                                        |
@@ -218,6 +224,8 @@ downward.
 | > → [[Real Python venv                                                |
 | > primer]{.unde                                                       |
 | rline}](https://realpython.com/python-virtual-environments-a-primer/) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-01, PRE-03                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -243,8 +251,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Never install packages without immediately updating requirements.txt. |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-04                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | pip, requirements.txt, langgraph, langchain-anthropic, anthropic,     |
@@ -263,6 +269,8 @@ downward.
 | > → [[pip requirements files                                          |
 | > reference]{.underline                                               |
 | }](https://pip.pypa.io/en/stable/reference/requirements-file-format/) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-04                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -291,8 +299,6 @@ downward.
 | Also create a .env.example file with placeholder values --- this IS   |
 | committed to git so teammates know what keys are needed.              |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-04, PRE-05                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | python-dotenv, os module, .env, .env.example, config.py validation    |
@@ -308,6 +314,8 @@ downward.
 | > → [[GitHub secret scanning (understand why .gitignore               |
 | > matters)]{.underline}](https://do                                   |
 | cs.github.com/en/code-security/secret-scanning/about-secret-scanning) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-04, PRE-05                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -340,8 +348,6 @@ downward.
 +-----------------------------------------------------------------------+
 | These are the models you\'ll use throughout.                          |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-05, PRE-06                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Anthropic API, anthropic Python SDK, claude-sonnet-4-20250514         |
@@ -361,6 +367,8 @@ downward.
 | > → [[Anthropic model                                                 |
 | > list]{.underli                                                      |
 | ne}](https://docs.anthropic.com/en/docs/about-claude/models/overview) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-05, PRE-06                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -391,8 +399,6 @@ downward.
 | If you can\'t get this working, stop --- the full pipeline depends on |
 | it.                                                                   |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-05, PRE-06                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | e2b-code-interpreter SDK, E2B_API_KEY                                 |
@@ -409,6 +415,8 @@ downward.
 | >                                                                     |
 | > → [[e2b Code Interpreter                                            |
 | > guide]{.underline}](https://e2b.dev/docs/code-interpreter/overview) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-05, PRE-06                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -439,8 +447,6 @@ downward.
 | Confirm the connection works before wiring it into agents ---         |
 | debugging MCP inside a graph is much harder.                          |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-03, PRE-05, PRE-06                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | \@modelcontextprotocol/server-github (npm), GitHub PAT (repo scope    |
@@ -466,6 +472,8 @@ downward.
 | >                                                                     |
 | SDK]{.underline}](https://github.com/modelcontextprotocol/python-sdk) |
 +-----------------------------------------------------------------------+
+| **Depends on:** PRE-03, PRE-05, PRE-06                                |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -479,29 +487,46 @@ downward.
 | Having a clear structure from the start prevents the chaos of putting |
 | files wherever feels convenient in the moment.                        |
 +-----------------------------------------------------------------------+
-| Create these directories: /agents (one .py file per agent), /graph    |
-| (LangGraph graph definition), /state (shared state schema), /prompts  |
-| (prompt template strings), /tests (unit + integration tests), /output |
-| (generated code lands here --- gitignored), /scripts (utility         |
-| scripts), /context (stable context files).                            |
+| The directory layout is split into THREE zones with different         |
+| lifecycles --- mixing them caused a real bug during early testing (a  |
+| runtime artifact overwrote a stable project file), so the split is    |
+| architectural, not cosmetic.                                          |
 +-----------------------------------------------------------------------+
-| The /context directory is new and important --- it holds              |
-| CONVENTIONS.md, ARCHITECTURE.md, and shared_dependencies.md, the      |
-| three stable files that are injected into every agent call.           |
+| Zone 1 --- Source code (edited manually, committed to git): /agents   |
+| (one .py file per agent), /graph (LangGraph graph definition), /state |
+| (shared state schema), /prompts (prompt template strings), /tests     |
+| (unit + integration tests), /scripts (utility scripts).               |
 +-----------------------------------------------------------------------+
-| Add a .gitkeep file to each empty directory so git tracks the         |
+| Zone 2 --- Stable context (human-authored, committed to git):         |
+| /context/ holds only files that are stable project inputs ---         |
+| CONVENTIONS.md, ARCHITECTURE.md, project_guide_v2.md,                 |
+| DevAssistant_TaskList_v3.md, and shared_dependencies.template.md.     |
++-----------------------------------------------------------------------+
+| Agents READ from this directory but never write to it.                |
++-----------------------------------------------------------------------+
+| Zone 3 --- Runtime output (agent-authored, gitignored): /output/ is   |
+| created at runtime; each pipeline run gets its own subdirectory at    |
+| /output/\<timestamp\>-\<slug\>/ containing three subfolders:          |
+| /context/ (runtime manifest files like shared_dependencies.md,        |
+| task_queue.json, ARCHITECT_SPEC.md, INTERFACES.py,                    |
+| SYNTHESIS_REPORT.md, clarified_brief.md), /code/ (generated code),    |
+| and /reports/ (critic outputs).                                       |
++-----------------------------------------------------------------------+
+| Add a .gitkeep file to each empty source directory so git tracks the  |
 | structure.                                                            |
 +-----------------------------------------------------------------------+
-| Add /output/ to .gitignore --- you never commit AI-generated code to  |
+| Add /output/ to .gitignore --- you never commit pipeline output to    |
 | this repo.                                                            |
++-----------------------------------------------------------------------+
+| Do NOT add any .gitignore rule that ignores files inside /context/    |
+| --- that directory contains only stable, committed files.             |
 +-----------------------------------------------------------------------+
 | Commit this skeleton before writing any code.                         |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-03, PRE-04                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| Standard Python project layout, .gitkeep convention                   |
+| Standard Python project layout, .gitkeep convention, three-zone       |
+| directory split                                                       |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -516,6 +541,11 @@ downward.
 | > → [[LangGraph project examples for                                  |
 | > reference]{.unde                                                    |
 | rline}](https://github.com/langchain-ai/langgraph/tree/main/examples) |
+| >                                                                     |
+| > → [[Build-system conventions (Bazel, Cargo                          |
+| > inspiration)]{.underline}](https://bazel.build/concepts/build-ref)  |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-03, PRE-04                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -545,8 +575,6 @@ downward.
 | If pytest can\'t find the test, you have a path issue --- fix it now  |
 | before you have 20 test files.                                        |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-04, PRE-05                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | pytest, pytest-asyncio (for async LangGraph node tests), pytest-mock, |
@@ -566,6 +594,8 @@ downward.
 | > → [[pytest conftest.py                                              |
 | > explanation]{.underline}](https://docs.pytest.org/en/stab           |
 | le/reference/fixtures.html#conftest-py-sharing-fixtures-across-files) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-04, PRE-05                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -594,8 +624,6 @@ downward.
 | INFO for agent start/complete and task dispatch, WARNING for retries  |
 | and task escalations, ERROR for failures.                             |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-04, PRE-05                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Python logging module (stdlib), optional: structlog for               |
@@ -617,23 +645,29 @@ downward.
 | > → [[Real Python logging                                             |
 | > guide]{.underline}](https://realpython.com/python-logging/)         |
 +-----------------------------------------------------------------------+
+| **Depends on:** PRE-04, PRE-05                                        |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
 +-----------------------------------------------------------------------+
 | **PRE-13 Create stable context files (CONVENTIONS.md,                 |
-| ARCHITECTURE.md)** *P1 --- Critical*                                  |
+| ARCHITECTURE.md, and template)** *P1 --- Critical*                    |
 +-----------------------------------------------------------------------+
 | **Description**                                                       |
 +-----------------------------------------------------------------------+
-| Create the three stable context files that will be injected into      |
-| every agent call throughout the entire project.                       |
+| Create the stable context files that live in /context/ and are read   |
+| by every agent call.                                                  |
 +-----------------------------------------------------------------------+
-| These files live in /context/ and survive context resets --- they     |
-| carry information that would otherwise need to be re-derived on every |
-| agent invocation.                                                     |
+| These are human-authored, committed to git, and agents never write to |
+| them at runtime.                                                      |
 +-----------------------------------------------------------------------+
-| Keep them concise; they consume context budget on every call.         |
+| This is the critical distinction: /context/ is READ-ONLY from the     |
+| agents\' perspective.                                                 |
++-----------------------------------------------------------------------+
+| Runtime manifest files (shared_dependencies.md, task_queue.json,      |
+| SYNTHESIS_REPORT.md, etc.) live in /output/\<run_id\>/context/ --- a  |
+| completely separate location created at runtime.                      |
 +-----------------------------------------------------------------------+
 | CONVENTIONS.md: Coding standards for this project.                    |
 +-----------------------------------------------------------------------+
@@ -649,29 +683,40 @@ downward.
 +-----------------------------------------------------------------------+
 | ARCHITECTURE.md: High-level system overview for agent reference.      |
 +-----------------------------------------------------------------------+
-| Include: the pipeline flow (Spec Clarifier → Architect → Coder loop → |
-| Critics → Synthesis → DevOps → GitHub), module boundaries (which      |
-| agent owns which responsibility), data flow (what each agent receives |
-| and produces), and key constraints (max 2 revision cycles, 30s e2b    |
-| timeout, file-based handoffs).                                        |
+| Include: the pipeline flow (workspace bootstrap → Spec Clarifier →    |
+| Architect → Coder loop → Critics → Synthesis → DevOps → GitHub),      |
+| module boundaries (which agent owns which responsibility), data flow  |
+| (what each agent receives and produces), and key constraints (max 2   |
+| revision cycles, 30s e2b timeout, file-based handoffs via             |
+| /output/\<run_id\>/).                                                 |
 +-----------------------------------------------------------------------+
-| shared_dependencies.md: Start this as an empty template with section  |
-| headers only --- the Architect Agent will populate it during AGT-02.  |
+| shared_dependencies.template.md: An EMPTY template containing only    |
+| section headers and any bootstrap environment variables               |
+| (ANTHROPIC_API_KEY, E2B_API_KEY, GITHUB_PAT).                         |
 +-----------------------------------------------------------------------+
-| Section headers to pre-create: Shared Types & Models, Exported        |
-| Function Signatures, API Contracts, Data Schemas, Environment         |
-| Variables, and File Registry.                                         |
+| This template is what workspace_node seeds the per-run                |
+| shared_dependencies.md from.                                          |
 +-----------------------------------------------------------------------+
-| This file is the cross-file coherence mechanism that allows the Coder |
-| to generate multiple files that work together without receiving the   |
-| full source code of every previously generated file.                  |
+| Section headers to include: Shared Types & Models, Exported Function  |
+| Signatures, API Contracts, Data Schemas, Environment Variables, and   |
+| File Registry.                                                        |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-10                                                    |
+| The template itself never gets populated --- the Architect and Coder  |
+| only write to the per-run copy.                                       |
++-----------------------------------------------------------------------+
+| IMPORTANT: Do NOT create shared_dependencies.md directly in           |
+| /context/.                                                            |
++-----------------------------------------------------------------------+
+| That file is runtime output and must live per-run at                  |
+| /output/\<run_id\>/context/shared_dependencies.md.                    |
++-----------------------------------------------------------------------+
+| The template file is the only seed; workspace_node (PRE-14) handles   |
+| copying it into each run.                                             |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| Markdown, /context/ directory, CONVENTIONS.md, ARCHITECTURE.md,       |
-| shared_dependencies.md                                                |
+| Markdown, /context/ directory for stable files only,                  |
+| shared_dependencies.template.md pattern                               |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -685,6 +730,104 @@ downward.
 | > → [[CLAUDE.md / .cursorrules pattern                                |
 | > explained]{.underline}](https://docs                                |
 | .anthropic.com/en/docs/build-with-claude/prompt-engineering/overview) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-10                                                |
++-----------------------------------------------------------------------+
+|                                                                       |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+| **PRE-14 Create workspace bootstrap utility and workspace_node** *P1  |
+| --- Critical*                                                         |
++-----------------------------------------------------------------------+
+| **Description**                                                       |
++-----------------------------------------------------------------------+
+| Create /scripts/workspace.py --- the utility that creates and         |
+| initializes a per-run workspace at the start of every pipeline        |
+| execution.                                                            |
++-----------------------------------------------------------------------+
+| This is the foundation for the stable-vs-runtime context separation   |
+| from PRE-10 and PRE-13.                                               |
++-----------------------------------------------------------------------+
+| Function signature: def create_run_workspace(project_brief: str) -\>  |
+| Path.                                                                 |
++-----------------------------------------------------------------------+
+| The function: (1) Generates a run ID from the current UTC timestamp + |
+| a slug of the project brief (e.g.,                                    |
+| \'2026-04-20T14-32-build-todo-app\').                                 |
++-----------------------------------------------------------------------+
+| \(2\) Creates /output/\<run_id\>/ and the three subdirectories:       |
+| /output/\<run_id\>/context/, /output/\<run_id\>/code/,                |
+| /output/\<run_id\>/reports/.                                          |
++-----------------------------------------------------------------------+
+| \(3\) Seeds /output/\<run_id\>/context/shared_dependencies.md by      |
+| copying /context/shared_dependencies.template.md (from PRE-13).       |
++-----------------------------------------------------------------------+
+| The template provides the section headers; the Architect and Coder    |
+| fill in the content during the run.                                   |
++-----------------------------------------------------------------------+
+| \(4\) Returns the absolute Path to /output/\<run_id\>/.               |
++-----------------------------------------------------------------------+
+| Also create workspace_node in /graph/pipeline.py --- the first node   |
+| that runs after START in the LangGraph.                               |
++-----------------------------------------------------------------------+
+| Updated graph flow: START → workspace_node → spec_clarifier_node →    |
+| architect_dispatch_node → \...                                        |
++-----------------------------------------------------------------------+
+| workspace_node responsibilities: (1) Call                             |
+| create_run_workspace(state\[\'project_brief\'\]) and get back the     |
+| run_dir Path.                                                         |
++-----------------------------------------------------------------------+
+| \(2\) Populate state with all seven per-run path fields: run_dir,     |
+| shared_deps_path, task_queue_path, architect_spec_path,               |
+| interfaces_path, synthesis_report_path, clarified_brief_path.         |
++-----------------------------------------------------------------------+
+| All path fields are derived from run_dir + the canonical filename for |
+| each artifact.                                                        |
++-----------------------------------------------------------------------+
+| \(3\) Log the run_id so a user can find this run\'s output folder     |
+| easily.                                                               |
++-----------------------------------------------------------------------+
+| Why this is its own task: every downstream agent (Spec Clarifier,     |
+| Architect, Coder, Critics, Synthesis, DevOps, GitHub) reads paths     |
+| from these state fields.                                              |
++-----------------------------------------------------------------------+
+| If workspace_node is wrong, everything downstream fails.              |
++-----------------------------------------------------------------------+
+| It is the smallest, most focused task in the pipeline, so it deserves |
+| its own implementation and test pass.                                 |
++-----------------------------------------------------------------------+
+| Test: run workspace_node in isolation with a sample brief, confirm    |
+| the directory structure is created, shared_dependencies.md exists     |
+| with template content, and all seven state paths point to the correct |
+| locations.                                                            |
++-----------------------------------------------------------------------+
+| **Tech Requirements**                                                 |
+|                                                                       |
+| Python pathlib, shutil.copy, datetime, python-slugify, LangGraph node |
+| pattern                                                               |
++-----------------------------------------------------------------------+
+| **Resources & Links**                                                 |
+|                                                                       |
+| > → [[Python pathlib                                                  |
+| > docs]{.underline}](https://docs.python.org/3/library/pathlib.html)  |
+| >                                                                     |
+| > → [[Python shutil docs (for copying the                             |
+| > t                                                                   |
+| emplate)]{.underline}](https://docs.python.org/3/library/shutil.html) |
+| >                                                                     |
+| > → [[Python datetime for timestamp ISO                               |
+| > s                                                                   |
+| trings]{.underline}](https://docs.python.org/3/library/datetime.html) |
+| >                                                                     |
+| > → [[python-slugify                                                  |
+| > library]{.underline}](https://pypi.org/project/python-slugify/)     |
+| >                                                                     |
+| > → [[LangGraph how-to: entry point                                   |
+| > nodes]{.und                                                         |
+| erline}](https://langchain-ai.github.io/langgraph/how-tos/graph-api/) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-10, PRE-13                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -710,32 +853,45 @@ downward.
 +-----------------------------------------------------------------------+
 | IMPORTANT: The state object must store file paths, NOT file contents. |
 +-----------------------------------------------------------------------+
-| Generated code is written to disk immediately and referenced by path  |
-| in state.                                                             |
+| Generated code and manifest files are written to disk immediately and |
+| referenced by path in state.                                          |
 +-----------------------------------------------------------------------+
 | This keeps the state object small, prevents context accumulation, and |
 | treats the filesystem as shared memory.                               |
 +-----------------------------------------------------------------------+
-| Fields to include: project_brief (str), clarified_brief (str),        |
-| architect_spec_path (str --- path to spec file on disk), task_queue   |
-| (list\[dict\] --- ordered list of coding tasks from the Architect),   |
-| current_task_index (int, default 0), generated_file_paths             |
-| (list\[str\] --- paths to files written to disk, NOT their contents), |
-| interface_definitions_path (str --- path to interfaces file on disk), |
-| e2b_output (dict with stdout/stderr/exit_code), test_feedback_path    |
-| (str), security_feedback_path (str), quality_feedback_path (str),     |
-| synthesis_report_path (str), devops_config_paths (list\[str\]),       |
-| revision_count (int, default 0), task_failure_count (int, default 0), |
-| status (str).                                                         |
+| Input fields: project_brief (str), status (str), revision_count (int, |
+| default 0), task_failure_count (int, default 0).                      |
++-----------------------------------------------------------------------+
+| Per-run workspace fields (all absolute paths to files inside          |
+| /output/\<run_id\>/): run_dir (str --- the per-run workspace root,    |
+| set by workspace_node; every other path is derived from this),        |
+| shared_deps_path (str ---                                             |
+| /output/\<run_id\>/context/shared_dependencies.md), task_queue_path   |
+| (str --- /output/\<run_id\>/context/task_queue.json),                 |
+| architect_spec_path (str ---                                          |
+| /output/\<run_id\>/context/ARCHITECT_SPEC.md), interfaces_path (str   |
+| --- /output/\<run_id\>/context/INTERFACES.py), synthesis_report_path  |
+| (str --- /output/\<run_id\>/context/SYNTHESIS_REPORT.md),             |
+| clarified_brief_path (str ---                                         |
+| /output/\<run_id\>/context/clarified_brief.md).                       |
++-----------------------------------------------------------------------+
+| Task tracking fields: task_queue (list\[dict\] --- ordered list of    |
+| coding tasks from the Architect), current_task_index (int, default    |
+| 0), generated_file_paths (list\[str\] --- paths to files written to   |
+| disk, under /output/\<run_id\>/code/), e2b_output (dict with          |
+| stdout/stderr/exit_code), test_feedback_path (str --- under           |
+| /output/\<run_id\>/reports/), security_feedback_path (str),           |
+| quality_feedback_path (str), devops_config_paths (list\[str\]).       |
++-----------------------------------------------------------------------+
+| Note: the Spec Clarifier writes its output to clarified_brief_path on |
+| disk --- do NOT store the clarified brief content in state.           |
 +-----------------------------------------------------------------------+
 | Use TypedDict for simplicity in early phases.                         |
-+-----------------------------------------------------------------------+
-| Depends on: PRE-05, PRE-10, PRE-13                                    |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | LangGraph StateGraph, Python TypedDict (typing module), or Pydantic   |
-| BaseModel                                                             |
+| BaseModel, per-run workspace paths                                    |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -754,6 +910,8 @@ downward.
 | > → [[Pydantic BaseModel                                              |
 | >                                                                     |
 | docs]{.underline}](https://docs.pydantic.dev/latest/concepts/models/) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-05, PRE-10, PRE-13                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -794,8 +952,6 @@ downward.
 | Test it: run the function and confirm a real file appears in          |
 | /output/.                                                             |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-07, MVP-01, PRE-13                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | anthropic Python SDK, claude-sonnet-4-20250514, basic system/user     |
@@ -817,6 +973,8 @@ downward.
 | > → [[Claude model                                                    |
 | > reference]{.underli                                                 |
 | ne}](https://docs.anthropic.com/en/docs/about-claude/models/overview) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-07, MVP-01, PRE-13                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -853,8 +1011,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Test it by passing the output file path from MVP-02.                  |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-07, MVP-02                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | anthropic Python SDK, claude-haiku-4-5-20251001, pathlib              |
@@ -871,6 +1027,8 @@ downward.
 | > → [[Anthropic pricing (understand Haiku vs Sonnet                   |
 | >                                                                     |
 |  cost)]{.underline}](https://www.anthropic.com/pricing#anthropic-api) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-07, MVP-02                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -910,8 +1068,6 @@ downward.
 +-----------------------------------------------------------------------+
 | This is your green light to build the rest of the system.             |
 +-----------------------------------------------------------------------+
-| Depends on: MVP-01, MVP-02, MVP-03                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | LangGraph StateGraph, add_node, add_edge, compile(), invoke()         |
@@ -934,21 +1090,28 @@ downward.
 | > state)]{.unde                                                       |
 | rline}](https://langchain-ai.github.io/langgraph/concepts/low_level/) |
 +-----------------------------------------------------------------------+
+| **Depends on:** MVP-01, MVP-02, MVP-03                                |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
 +-----------------------------------------------------------------------+
-| **MVP-05 Add file output: write generated code to disk** *P2 ---      |
-| High*                                                                 |
+| **MVP-05 Add file output: write generated code to run workspace** *P2 |
+| --- High*                                                             |
 +-----------------------------------------------------------------------+
 | **Description**                                                       |
 +-----------------------------------------------------------------------+
-| After the graph runs, verify that all generated files were written    |
-| correctly to /output/{project_name}/.                                 |
+| Verify that all generated files are written correctly to the per-run  |
+| workspace, specifically at /output/\<run_id\>/code/{filename}.        |
 +-----------------------------------------------------------------------+
-| Create /scripts/file_writer.py as a utility with a function that      |
-| accepts a filename and content string, creates any necessary parent   |
-| directories, and writes the file using pathlib.                       |
+| Paths are derived from state\[\"run_dir\"\] --- never hardcoded.      |
++-----------------------------------------------------------------------+
+| Create /scripts/file_writer.py as a utility with signature: def       |
+| write_code_file(run_dir: str, filename: str, content: str) -\> Path.  |
++-----------------------------------------------------------------------+
+| The function composes the target path as Path(run_dir) / \"code\" /   |
+| filename, creates any necessary parent directories, and writes the    |
+| file using pathlib.                                                   |
 +-----------------------------------------------------------------------+
 | This utility is imported by the Coder and any other agent that        |
 | produces file output.                                                 |
@@ -957,16 +1120,22 @@ downward.
 | that could be in LLM-generated filenames.                             |
 +-----------------------------------------------------------------------+
 | The function should return the absolute Path object so callers can    |
-| store it in state.                                                    |
+| store it in state.generated_file_paths.                               |
 +-----------------------------------------------------------------------+
-| After running the MVP graph, open one of the output files in VS Code  |
-| and confirm it looks like real, runnable Python code.                 |
+| Why run_dir instead of project_name: each pipeline run needs its own  |
+| isolated workspace so parallel or sequential runs cannot clobber each |
+| other\'s files.                                                       |
 +-----------------------------------------------------------------------+
-| Depends on: MVP-04                                                    |
+| This matches the per-run workspace pattern established by             |
+| workspace_node (PRE-14).                                              |
++-----------------------------------------------------------------------+
+| After running the MVP graph, open one of the output files (at         |
+| /output/\<timestamp-slug\>/code/) and confirm it looks like real,     |
+| runnable Python code.                                                 |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| Python pathlib, Path.mkdir, Path.write_text                           |
+| Python pathlib, Path.mkdir, Path.write_text, per-run workspace paths  |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -975,6 +1144,8 @@ downward.
 | >                                                                     |
 | > → [[pathlib tutorial (Real                                          |
 | > Python)]{.underline}](https://realpython.com/python-pathlib/)       |
++-----------------------------------------------------------------------+
+| **Depends on:** MVP-04, PRE-14                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1006,8 +1177,6 @@ downward.
 | This is not about perfection --- it\'s about knowing exactly where    |
 | you are starting from.                                                |
 +-----------------------------------------------------------------------+
-| Depends on: MVP-05                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Full MVP stack (LangGraph, Anthropic SDK, pathlib)                    |
@@ -1020,6 +1189,8 @@ downward.
 | > → [[SQLite Python docs (for evaluating                              |
 | >                                                                     |
 | output)]{.underline}](https://docs.python.org/3/library/sqlite3.html) |
++-----------------------------------------------------------------------+
+| **Depends on:** MVP-05                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1036,8 +1207,9 @@ downward.
 +-----------------------------------------------------------------------+
 | Create /agents/spec_clarifier.py.                                     |
 +-----------------------------------------------------------------------+
-| This agent runs before any code is written and interrogates the       |
-| project brief.                                                        |
+| This agent runs after workspace_node and before any code is written   |
+| --- it interrogates the project brief and writes a clarified version  |
+| to disk.                                                              |
 +-----------------------------------------------------------------------+
 | Its job: identify the 3--5 questions that would most reduce ambiguity |
 | if answered.                                                          |
@@ -1047,9 +1219,6 @@ downward.
 | (personal tool, 10 users, 1000 users)?\', \'Do you have a preference  |
 | for ORM vs raw SQL?\'.                                                |
 +-----------------------------------------------------------------------+
-| The agent should return a structured dict: {\'questions\': \[\...\],  |
-| \'answers\': \[\...\]}.                                               |
-+-----------------------------------------------------------------------+
 | For the MVP, answers can be hardcoded placeholders --- you\'ll wire   |
 | up user input later.                                                  |
 +-----------------------------------------------------------------------+
@@ -1057,15 +1226,23 @@ downward.
 | technical decisions that are hard to change later (auth, database,    |
 | API design) over stylistic ones.                                      |
 +-----------------------------------------------------------------------+
-| Write the clarified brief to disk as /context/clarified_brief.md and  |
-| return its path.                                                      |
+| Output: write the clarified brief as markdown to                      |
+| state\[\"clarified_brief_path\"\] (which workspace_node has pre-set   |
+| to /output/\<run_id\>/context/clarified_brief.md).                    |
 +-----------------------------------------------------------------------+
-| Depends on: MVP-01, PRE-07, PRE-13                                    |
+| The agent does NOT store the brief content in LangGraph state --- it  |
+| only writes the file and relies on the path already being in state.   |
++-----------------------------------------------------------------------+
+| This follows the \'paths not contents\' rule from the project guide:  |
+| any downstream agent that needs the clarified brief reads it from     |
+| disk using the path in state.                                         |
++-----------------------------------------------------------------------+
+| Return {} or just the path confirmation --- not the content.          |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| anthropic SDK, claude-sonnet-4-20250514, structured dict output,      |
-| pathlib                                                               |
+| anthropic SDK, claude-sonnet-4-20250514, structured markdown output,  |
+| pathlib, state\[\"clarified_brief_path\"\]                            |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1080,6 +1257,8 @@ downward.
 | > → [[Few-shot prompting                                              |
 | > techniques]{.underline}](https://docs.ant                           |
 | hropic.com/en/docs/build-with-claude/prompt-engineering/use-examples) |
++-----------------------------------------------------------------------+
+| **Depends on:** MVP-01, PRE-07, PRE-13, PRE-14                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1098,14 +1277,16 @@ downward.
 +-----------------------------------------------------------------------+
 | Spend extra time on the system prompts.                               |
 +-----------------------------------------------------------------------+
-| The Architect produces FOUR distinct outputs, written to disk:        |
+| The Architect produces FOUR distinct outputs, all written to the      |
+| per-run workspace:                                                    |
 +-----------------------------------------------------------------------+
 | 1\.                                                                   |
 +-----------------------------------------------------------------------+
 | ARCHITECT_SPEC.md --- Full project spec: tech stack, file/module      |
 | list, API contracts, data models, implementation steps.               |
 +-----------------------------------------------------------------------+
-| Written to /context/ARCHITECT_SPEC.md.                                |
+| Written to state\[\"architect_spec_path\"\]                           |
+| (/output/\<run_id\>/context/ARCHITECT_SPEC.md).                       |
 +-----------------------------------------------------------------------+
 | 2\.                                                                   |
 +-----------------------------------------------------------------------+
@@ -1116,21 +1297,22 @@ downward.
 | FastAPI route signatures (no implementations), database model         |
 | schemas.                                                              |
 +-----------------------------------------------------------------------+
-| Written to /context/INTERFACES.py.                                    |
+| Written to state\[\"interfaces_path\"\]                               |
+| (/output/\<run_id\>/context/INTERFACES.py).                           |
 +-----------------------------------------------------------------------+
 | This is the C header/implementation split pattern --- the Coder       |
 | implements against these contracts.                                   |
 +-----------------------------------------------------------------------+
-| 3\. shared_dependencies.md --- The cross-file coherence manifest,     |
-| updating the template from PRE-13.                                    |
+| 3\. shared_dependencies.md --- The cross-file coherence manifest.     |
+| workspace_node already seeded this from                               |
+| shared_dependencies.template.md; the Architect now populates the      |
+| sections.                                                             |
 +-----------------------------------------------------------------------+
 | Documents every shared type, exported function signature, API         |
 | contract, data schema, and environment variable used across files.    |
 +-----------------------------------------------------------------------+
-| This file accompanies every Coder invocation and eliminates the need  |
-| to pass full source code.                                             |
-+-----------------------------------------------------------------------+
-| Written to /context/shared_dependencies.md.                           |
+| Written to state\[\"shared_deps_path\"\]                              |
+| (/output/\<run_id\>/context/shared_dependencies.md).                  |
 +-----------------------------------------------------------------------+
 | 4\. task_queue.json --- A topologically sorted list of file-level     |
 | coding tasks derived from the import/dependency graph.                |
@@ -1142,7 +1324,14 @@ downward.
 | depends_on_files (list\[str\] --- previously generated files this     |
 | task imports from).                                                   |
 +-----------------------------------------------------------------------+
-| Written to /context/task_queue.json.                                  |
+| Written to state\[\"task_queue_path\"\]                               |
+| (/output/\<run_id\>/context/task_queue.json).                         |
++-----------------------------------------------------------------------+
+| All paths are read from state --- the Architect never hardcodes       |
+| /context/ paths for runtime artifacts.                                |
++-----------------------------------------------------------------------+
+| Stable files (CONVENTIONS.md, ARCHITECTURE.md) in /context/ are still |
+| read with hardcoded paths, because those are stable.                  |
 +-----------------------------------------------------------------------+
 | Use claude-sonnet-4-20250514 for all four outputs.                    |
 +-----------------------------------------------------------------------+
@@ -1150,12 +1339,10 @@ downward.
 | ARCHITECT_SPEC.md, then use those to generate shared_dependencies.md  |
 | and task_queue.json.                                                  |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-01, MVP-01, PRE-13                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| anthropic SDK, claude-sonnet-4-20250514, JSON output, Python abstract |
-| base classes, pathlib                                                 |
+| anthropic SDK, claude-sonnet-4-20250514, JSON output, abstract base   |
+| classes, per-run workspace paths                                      |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1176,6 +1363,8 @@ downward.
 | >                                                                     |
 | > → [[REST API design guide]{.underline}](https://restfulapi.net/)    |
 +-----------------------------------------------------------------------+
+| **Depends on:** AGT-01, MVP-01, PRE-13, PRE-14                        |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -1193,35 +1382,43 @@ downward.
 | never sibling file implementations.                                   |
 +-----------------------------------------------------------------------+
 | For each task dispatched by the Architect, the Coder receives         |
-| exactly: (1) The current task description from task_queue.json, (2)   |
-| The content of shared_dependencies.md, (3) Interface definitions from |
-| INTERFACES.py relevant to this task only (not the full file), (4)     |
+| exactly: (1) The current task description from task_queue.json (read  |
+| from state\[\"task_queue_path\"\]), (2) The content of                |
+| shared_dependencies.md (read from state\[\"shared_deps_path\"\]), (3) |
+| Interface definitions from INTERFACES.py relevant to this task only   |
+| (read from state\[\"interfaces_path\"\], not the full file), (4)      |
 | Extracted public signatures of previously generated files this task   |
 | depends on (function signatures and class headers --- NOT full        |
-| implementations), (5) CONVENTIONS.md content.                         |
+| implementations), (5) CONVENTIONS.md content (read from stable        |
+| /context/ location, since it\'s not per-run).                         |
 +-----------------------------------------------------------------------+
-| After generating a file: write it to                                  |
-| /output/{project_name}/{filename}, extract its public interface       |
-| (function signatures, class definitions, exported types), append that |
-| interface summary to shared_dependencies.md, and store the file path  |
-| in state.                                                             |
+| After generating a file: write it to state\[\"run_dir\"\] / \"code\"  |
+| / filename (via the file_writer utility from MVP-05), extract its     |
+| public interface (function signatures, class definitions, exported    |
+| types), append that interface summary to the run\'s                   |
+| shared_dependencies.md (at state\[\"shared_deps_path\"\]), and store  |
+| the file path in state.generated_file_paths.                          |
 +-----------------------------------------------------------------------+
 | Then reset the context window and process the next task.              |
 +-----------------------------------------------------------------------+
+| All runtime paths come from state --- the Coder never hardcodes       |
+| /output/ or /context/\<runtime-file\> paths.                          |
++-----------------------------------------------------------------------+
+| The one exception: CONVENTIONS.md and ARCHITECTURE.md are stable      |
+| files read from a fixed /context/ location.                           |
++-----------------------------------------------------------------------+
 | The function signature: def run_coder_task(task: dict, shared_deps:   |
 | str, relevant_interfaces: str, prior_signatures: str, conventions:    |
-| str) -\> tuple\[str, str\]: returns (file_path,                       |
+| str, run_dir: str) -\> tuple\[str, str\]: returns (file_path,         |
 | extracted_public_interface).                                          |
 +-----------------------------------------------------------------------+
 | Full implementation code never re-enters the context window after     |
 | being written to disk.                                                |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-02, MVP-02                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| anthropic SDK, claude-sonnet-4-20250514, pathlib, ast module (for     |
-| interface extraction)                                                 |
+| anthropic SDK, claude-sonnet-4-20250514, pathlib, ast module,         |
+| state-driven runtime paths                                            |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1241,6 +1438,8 @@ downward.
 | > shared_dependencies)]{.underline}]                                  |
 | (https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) |
 +-----------------------------------------------------------------------+
+| **Depends on:** AGT-02, MVP-02, PRE-14                                |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -1256,10 +1455,11 @@ downward.
 | This is not a single handoff --- it is an iterative dispatch cycle.   |
 +-----------------------------------------------------------------------+
 | After each Coder task completes, the Architect node runs a            |
-| lightweight evaluation: does the generated file satisfy the spec for  |
-| this task? Does the extracted interface match what                    |
-| shared_dependencies.md expected? If yes: advance current_task_index   |
-| and dispatch the next task.                                           |
+| lightweight evaluation: does the generated file (at                   |
+| state\[\"run_dir\"\] / \"code\" / filename) satisfy the spec for this |
+| task? Does the extracted interface match what the run\'s              |
+| shared_dependencies.md (at state\[\"shared_deps_path\"\]) expected?   |
+| If yes: advance current_task_index and dispatch the next task.        |
 +-----------------------------------------------------------------------+
 | If no: re-dispatch the same task with targeted correction             |
 | instructions appended to the task description.                        |
@@ -1269,7 +1469,10 @@ downward.
 | rather than retrying with the same Coder.                             |
 +-----------------------------------------------------------------------+
 | The Architect then splits the failing task into two smaller subtasks  |
-| and inserts them into task_queue.                                     |
+| and inserts them into state.task_queue.                               |
++-----------------------------------------------------------------------+
+| The updated task_queue.json at state\[\"task_queue_path\"\] must be   |
+| re-written to disk after each decomposition.                          |
 +-----------------------------------------------------------------------+
 | Reset task_failure_count to 0 after re-decomposition.                 |
 +-----------------------------------------------------------------------+
@@ -1282,14 +1485,13 @@ downward.
 +-----------------------------------------------------------------------+
 | LangGraph implementation: use a dedicated architect_dispatch_node     |
 | that reads task_queue\[current_task_index\], prepares the scoped      |
-| context for the Coder, and increments or resets the index as needed.  |
-+-----------------------------------------------------------------------+
-| Depends on: AGT-02, AGT-03                                            |
+| context for the Coder using state\[\"run_dir\"\]-derived paths, and   |
+| increments or resets the index as needed.                             |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | LangGraph conditional edges, StateGraph, task_queue state field,      |
-| current_task_index, task_failure_count                                |
+| current_task_index, run-workspace paths                               |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1304,6 +1506,8 @@ downward.
 | > → [[LangGraph graph API                                             |
 | > how-to]{.und                                                        |
 | erline}](https://langchain-ai.github.io/langgraph/how-tos/graph-api/) |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-02, AGT-03                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1343,8 +1547,6 @@ downward.
 | Include pytest conventions: fixtures, parametrize, and meaningful     |
 | test names.                                                           |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-03                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | anthropic SDK, claude-haiku-4-5-20251001, pytest conventions, pathlib |
@@ -1364,6 +1566,8 @@ downward.
 | > → [[Test-driven development                                         |
 | > intro]{.underline}](htt                                             |
 | ps://realpython.com/test-driven-development-of-a-django-restful-api/) |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-03                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1399,8 +1603,6 @@ downward.
 | Use claude-haiku-4-5-20251001 --- security review is pattern-matching |
 | and Haiku does it well.                                               |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-03                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | anthropic SDK, claude-haiku-4-5-20251001, structured list output,     |
@@ -1421,6 +1623,8 @@ downward.
 | > → [[Secure code review                                              |
 | > checklist]{.underlin                                                |
 | e}](https://owasp.org/www-pdf-archive/OWASP_Code_Review_Guide_v2.pdf) |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-03                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1458,8 +1662,6 @@ downward.
 | Be specific --- reference the function or class name.\' Use           |
 | claude-haiku-4-5-20251001.                                            |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-03                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | anthropic SDK, claude-haiku-4-5-20251001, pathlib                     |
@@ -1478,6 +1680,8 @@ downward.
 | > → [[Python docstring conventions (PEP                               |
 | > 257)]{.underline}](https://peps.python.org/pep-0257/)               |
 +-----------------------------------------------------------------------+
+| **Depends on:** AGT-03                                                |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -1495,26 +1699,38 @@ downward.
 | for the target node, giving each critic a clean context window        |
 | without shared mutable state.                                         |
 +-----------------------------------------------------------------------+
-| Pattern using Send: from langgraph.types import Send def              |
-| dispatch_critics(state): return \[Send(\'test_writer_node\',          |
-| {\...scoped state\...}), Send(\'security_node\', {\...scoped          |
-| state\...}), Send(\'quality_node\', {\...scoped state\...})\]         |
+| Pattern using Send (with run-workspace paths): from langgraph.types   |
+| import Send def dispatch_critics(state): return                       |
+| \[Send(\'test_writer_node\', {\'generated_file_paths\':               |
+| state\[\'generated_file_paths\'\], \'interfaces_path\':               |
+| state\[\'interfaces_path\'\], \'shared_deps_path\':                   |
+| state\[\'shared_deps_path\'\], \'run_dir\': state\[\'run_dir\'\]}),   |
+| Send(\'security_node\', {\'generated_file_paths\':                    |
+| state\[\'generated_file_paths\'\], \'shared_deps_path\':              |
+| state\[\'shared_deps_path\'\], \'run_dir\': state\[\'run_dir\'\]}),   |
+| Send(\'quality_node\', {\'generated_file_paths\':                     |
+| state\[\'generated_file_paths\'\], \'run_dir\':                       |
+| state\[\'run_dir\'\]})\]                                              |
 +-----------------------------------------------------------------------+
 | Each Send passes only what that critic needs --- file paths + the     |
 | specific context for that critic.                                     |
 +-----------------------------------------------------------------------+
-| The test writer gets: generated_file_paths,                           |
-| interface_definitions_path, shared_dependencies_path.                 |
+| The test writer gets: generated_file_paths, interfaces_path,          |
+| shared_deps_path, run_dir.                                            |
 +-----------------------------------------------------------------------+
-| The security reviewer gets: generated_file_paths,                     |
-| shared_dependencies_path.                                             |
+| The security reviewer gets: generated_file_paths, shared_deps_path,   |
+| run_dir.                                                              |
 +-----------------------------------------------------------------------+
-| The quality reviewer gets: generated_file_paths, conventions content. |
+| The quality reviewer gets: generated_file_paths + conventions content |
+| (loaded from stable /context/), run_dir.                              |
++-----------------------------------------------------------------------+
+| Each critic writes its output to state\[\"run_dir\"\] / \"reports\" / |
+| \<n\>.md.                                                             |
 +-----------------------------------------------------------------------+
 | No critic receives the full state or another critic\'s output.        |
 +-----------------------------------------------------------------------+
-| Fan back in: all three critics write their report to disk and return  |
-| the path.                                                             |
+| Fan back in: all three critics write their report to disk (under      |
+| /output/\<run_id\>/reports/) and return the path.                     |
 +-----------------------------------------------------------------------+
 | LangGraph merges the parallel branches using a reducer on the report  |
 | path fields.                                                          |
@@ -1522,12 +1738,10 @@ downward.
 | Test by adding timing logs --- total critic time should be            |
 | \~max(individual times), not sum.                                     |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-04, AGT-05, AGT-06                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | LangGraph Send API, fan-out/fan-in, parallel node execution, state    |
-| reducers                                                              |
+| reducers, run-workspace paths                                         |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1547,6 +1761,8 @@ downward.
 | > patterns]{.underl                                                   |
 | ine}](https://langchain-ai.github.io/langgraph/concepts/multi_agent/) |
 +-----------------------------------------------------------------------+
+| **Depends on:** AGT-04, AGT-05, AGT-06                                |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -1564,15 +1780,17 @@ downward.
 | Its role: prevent raw critic transcripts from ever reaching the       |
 | Coder.                                                                |
 +-----------------------------------------------------------------------+
-| Input: paths to the three critic report files (test_feedback_path,    |
-| security_feedback_path, quality_feedback_path).                       |
+| Input: paths to the three critic report files from state              |
+| (test_feedback_path, security_feedback_path, quality_feedback_path    |
+| --- all under /output/\<run_id\>/reports/).                           |
 +-----------------------------------------------------------------------+
 | The agent reads each report from disk, then consolidates them.        |
 +-----------------------------------------------------------------------+
 | Output: a single SYNTHESIS_REPORT.md file written to                  |
-| /context/SYNTHESIS_REPORT.md, containing: high_priority_fixes (list), |
-| medium_priority_fixes (list), low_priority_fixes (list),              |
-| has_blocking_issues (bool).                                           |
+| state\[\"synthesis_report_path\"\]                                    |
+| (/output/\<run_id\>/context/SYNTHESIS_REPORT.md), containing:         |
+| high_priority_fixes (list), medium_priority_fixes (list),             |
+| low_priority_fixes (list), has_blocking_issues (bool).                |
 +-----------------------------------------------------------------------+
 | System prompt: \'You are a tech lead consolidating PR review feedback |
 | from three reviewers.                                                 |
@@ -1589,20 +1807,20 @@ downward.
 | Use claude-sonnet-4-20250514 --- de-duplication across three          |
 | different formats requires reasoning.                                 |
 +-----------------------------------------------------------------------+
-| When revisions are needed, the Architect receives only the Synthesis  |
-| report path --- NOT the raw critic outputs.                           |
+| When revisions are needed, the Architect receives only                |
+| state\[\"synthesis_report_path\"\] --- NOT the raw critic outputs.    |
 +-----------------------------------------------------------------------+
-| The Architect then re-scopes specific tasks and re-dispatches the     |
-| Coder with fresh context.                                             |
+| The Architect reads SYNTHESIS_REPORT.md from disk, re-scopes specific |
+| tasks, and re-dispatches the Coder with fresh context.                |
 +-----------------------------------------------------------------------+
 | The Coder never sees unfiltered critic feedback.                      |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-07                                                    |
+| All paths come from state --- never hardcoded.                        |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | anthropic SDK, claude-sonnet-4-20250514, structured markdown output,  |
-| pathlib                                                               |
+| state-driven paths                                                    |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1613,6 +1831,8 @@ downward.
 | > → [[Anthropic tool use for structured                               |
 | > output]{.underline}](ht                                             |
 | tps://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview) |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-07                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1626,9 +1846,10 @@ downward.
 +-----------------------------------------------------------------------+
 | This agent produces infrastructure files the Coder doesn\'t generate. |
 +-----------------------------------------------------------------------+
-| Input: path to ARCHITECT_SPEC.md (reads the tech stack section) +     |
-| path to shared_dependencies.md (for environment variable              |
-| definitions).                                                         |
+| Input: path to ARCHITECT_SPEC.md from                                 |
+| state\[\"architect_spec_path\"\] (reads the tech stack section) +     |
+| path to shared_dependencies.md from state\[\"shared_deps_path\"\]     |
+| (for environment variable definitions).                               |
 +-----------------------------------------------------------------------+
 | It does NOT receive implementation source code --- only the spec and  |
 | dependency manifest.                                                  |
@@ -1636,8 +1857,11 @@ downward.
 | Output: a dict of {filename: content} for: Dockerfile,                |
 | .github/workflows/ci.yml, .env.example, docker-compose.yml.           |
 +-----------------------------------------------------------------------+
-| Write each file to /output/{project_name}/ and return the list of     |
-| file paths.                                                           |
+| Write each file to state\[\"run_dir\"\] / \"code\" / filename (same   |
+| directory as Coder-generated code, since these files belong at the    |
+| repo root when pushed to GitHub).                                     |
++-----------------------------------------------------------------------+
+| Append each file path to state.devops_config_paths.                   |
 +-----------------------------------------------------------------------+
 | Dockerfile should use multi-stage builds to keep the final image      |
 | small.                                                                |
@@ -1654,14 +1878,22 @@ downward.
 | The CI pipeline must run the test suite.                              |
 +-----------------------------------------------------------------------+
 | Never hardcode secrets --- use environment variable references.\'     |
-| Wire this to run in parallel with the Critic Trio using the Send API. |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-03B                                                   |
+| IMPORTANT: The generated files will land under                        |
+| /output/\<run_id\>/code/.                                             |
++-----------------------------------------------------------------------+
+| When AGT-11 pushes to GitHub, it strips the /code/ prefix so these    |
+| files end up at the repo root --- this means the Dockerfile\'s COPY   |
+| instructions, docker-compose volume paths, and CI working-directory   |
+| settings should all assume repo root (no /code/ prefix in the         |
+| generated file contents).                                             |
++-----------------------------------------------------------------------+
+| Wire this to run in parallel with the Critic Trio using the Send API. |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| anthropic SDK, claude-sonnet-4-20250514, Docker multi-stage build     |
-| syntax, GitHub Actions YAML, pathlib                                  |
+| anthropic SDK, claude-sonnet-4-20250514, Docker multi-stage, GitHub   |
+| Actions YAML, run-workspace paths                                     |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1681,6 +1913,8 @@ downward.
 | > reference]{.underline}](https://docs.github                         |
 | .com/en/actions/writing-workflows/workflow-syntax-for-github-actions) |
 +-----------------------------------------------------------------------+
+| **Depends on:** AGT-03B                                               |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -1699,15 +1933,12 @@ downward.
 | determines which tasks need revision, inserts those targeted tasks    |
 | back into task_queue, resets current_task_index to the first revision |
 | task, and the Coder loop from AGT-03B resumes with fresh context for  |
-| each task.                                                            |
-+-----------------------------------------------------------------------+
-| def should_revise(state): report =                                    |
+| each task. def should_revise(state): report =                         |
 | read_synthesis_report(state\[\'synthesis_report_path\'\]) if          |
 | report\[\'has_blocking_issues\'\] and state\[\'revision_count\'\] \<  |
 | 2: return \'architect_dispatch_node\' \# re-scope and re-queue return |
-| \'output_node\'                                                       |
-+-----------------------------------------------------------------------+
-| Add: graph.add_conditional_edges(\'synthesis_node\', should_revise).  |
+| \'output_node\' Add: graph.add_conditional_edges(\'synthesis_node\',  |
+| should_revise).                                                       |
 +-----------------------------------------------------------------------+
 | Increment revision_count each time the revision branch is taken ---   |
 | not each time the Coder runs.                                         |
@@ -1721,8 +1952,6 @@ downward.
 | Test explicitly --- create a brief that will produce security issues  |
 | and confirm the loop triggers and the Coder receives only the         |
 | relevant revision tasks.                                              |
-+-----------------------------------------------------------------------+
-| Depends on: AGT-08, AGT-09, AGT-03B                                   |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
@@ -1743,6 +1972,8 @@ downward.
 | > graph]{.und                                                         |
 | erline}](https://langchain-ai.github.io/langgraph/how-tos/graph-api/) |
 +-----------------------------------------------------------------------+
+| **Depends on:** AGT-08, AGT-09, AGT-03B                               |
++-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
 
@@ -1762,21 +1993,53 @@ downward.
 | The node reads file contents from disk at commit time --- state only  |
 | holds paths, not contents.                                            |
 +-----------------------------------------------------------------------+
+| CRITICAL --- path stripping: generated files live under               |
+| /output/\<run_id\>/code/ on the pipeline\'s disk.                     |
++-----------------------------------------------------------------------+
+| When committing to GitHub, the /output/\<run_id\>/code/ prefix MUST   |
+| be stripped so files land at the repo root.                           |
++-----------------------------------------------------------------------+
+| Example: /output/2026-04-20T14-32-todo/code/main.py → main.py in the  |
+| committed repo.                                                       |
++-----------------------------------------------------------------------+
+| Without this, generated imports like \`from models import User\`      |
+| break because the code would be committed under a nested              |
+| /code/models.py that no import statement references.                  |
++-----------------------------------------------------------------------+
+| What to EXCLUDE from the GitHub commit: do not commit                 |
+| /output/\<run_id\>/context/ (runtime manifest files like              |
+| shared_dependencies.md, SYNTHESIS_REPORT.md) or                       |
+| /output/\<run_id\>/reports/ (critic outputs).                         |
++-----------------------------------------------------------------------+
+| These are internal to the pipeline, not useful to the end user.       |
++-----------------------------------------------------------------------+
+| Only files from state.generated_file_paths and                        |
+| state.devops_config_paths get committed.                              |
++-----------------------------------------------------------------------+
+| MUST respect PIPELINE_MODE (see HRD-11): if PIPELINE_MODE=dry_run,    |
+| this node logs the intended actions (repo name, file list, PR title)  |
+| but does not call the GitHub API or push anything.                    |
++-----------------------------------------------------------------------+
+| Only when PIPELINE_MODE=live does the node actually create the repo   |
+| and open the PR.                                                      |
++-----------------------------------------------------------------------+
+| This prevents accidental repo creation during audits, tests, and      |
+| development.                                                          |
++-----------------------------------------------------------------------+
 | The repo name should be derived from the brief --- strip special      |
 | characters, lowercase, replace spaces with hyphens.                   |
 +-----------------------------------------------------------------------+
-| Add a check: if a repo with that name already exists, append a        |
-| timestamp to avoid collisions.                                        |
+| If a repo with that name already exists, append a timestamp to avoid  |
+| collisions.                                                           |
 +-----------------------------------------------------------------------+
-| Test end-to-end --- after running the full pipeline, confirm a real   |
-| GitHub repo was created in your account with real files committed.    |
-+-----------------------------------------------------------------------+
-| Depends on: AGT-09, PRE-09                                            |
+| Test end-to-end --- after running the full pipeline with              |
+| PIPELINE_MODE=live, confirm a real GitHub repo was created with files |
+| at the repo root, not under a /code/ folder.                          |
 +-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
-| GitHub MCP server, Python MCP client, GitHub REST API (via MCP),      |
-| pathlib                                                               |
+| GitHub MCP server, Python MCP client, GitHub REST API, path-prefix    |
+| stripping, PIPELINE_MODE guard                                        |
 +-----------------------------------------------------------------------+
 | **Resources & Links**                                                 |
 |                                                                       |
@@ -1793,6 +2056,8 @@ downward.
 | >                                                                     |
 | > → [[GitHub REST API (git/trees for bulk                             |
 | > commit)]{.underline}](https://docs.github.com/en/rest/git/trees)    |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-09, PRE-09, HRD-11                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1823,8 +2088,6 @@ downward.
 | and injected into critic prompts: \'The code produced this output     |
 | when run: {e2b_output}\'.                                             |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-03B, PRE-08                                           |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | e2b-code-interpreter SDK, async sandbox execution, subprocess timeout |
@@ -1843,6 +2106,8 @@ downward.
 | >                                                                     |
 | > → [[e2b timeout                                                     |
 | > configuration]{.underline}](https://e2b.dev/docs/sandbox/timeouts)  |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-03B, PRE-08                                       |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1876,8 +2141,6 @@ downward.
 +-----------------------------------------------------------------------+
 | That\'s Phase 1B\'s job.                                              |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-10, AGT-11, AGT-12                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Full Phase 1A stack                                                   |
@@ -1889,6 +2152,8 @@ downward.
 | >                                                                     |
 | > → [[PyJWT docs (for evaluating auth                                 |
 | > output)]{.underline}](https://pyjwt.readthedocs.io/)                |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-10, AGT-11, AGT-12                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1926,8 +2191,6 @@ downward.
 | Aim for tests that run in under 5 seconds total --- if they\'re slow, |
 | you haven\'t mocked correctly.                                        |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-13, PRE-11                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | pytest, pytest-mock, unittest.mock.MagicMock, pytest-asyncio,         |
@@ -1949,6 +2212,8 @@ downward.
 | > → [[Mocking the Anthropic API                                       |
 | > (pattern)]{.underli                                                 |
 | ne}](https://github.com/anthropics/anthropic-sdk-python#unit-testing) |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-13, PRE-11                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -1975,8 +2240,6 @@ downward.
 +-----------------------------------------------------------------------+
 | This prevents accidental API calls during rapid iteration.            |
 +-----------------------------------------------------------------------+
-| Depends on: HRD-01                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | pytest, pytest-asyncio, pytest.mark.integration, real Anthropic API   |
@@ -1995,6 +2258,8 @@ downward.
 | > → [[pytest-asyncio async test                                       |
 | > guide]{.underline}](https                                           |
 | ://pytest-asyncio.readthedocs.io/en/latest/reference/decorators.html) |
++-----------------------------------------------------------------------+
+| **Depends on:** HRD-01                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2023,8 +2288,6 @@ downward.
 | If the pipeline crashes on any of these, that\'s a bug to fix before  |
 | Phase 2.                                                              |
 +-----------------------------------------------------------------------+
-| Depends on: HRD-02                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | pytest, pytest.mark.parametrize, edge case testing                    |
@@ -2041,6 +2304,8 @@ downward.
 | >                                                                     |
 | > → [[Boundary testing                                                |
 | > techniques]{.underline}](https://realpython.com/python-testing/)    |
++-----------------------------------------------------------------------+
+| **Depends on:** HRD-02                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2073,8 +2338,6 @@ downward.
 | Document what you found and what you added --- this is part of the    |
 | Phase 1B sign-off.                                                    |
 +-----------------------------------------------------------------------+
-| Depends on: HRD-01                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Python re module, pydantic validators, input sanitization             |
@@ -2095,6 +2358,8 @@ downward.
 | > → [[Pydantic                                                        |
 | > validators                                                          |
 | ]{.underline}](https://docs.pydantic.dev/latest/concepts/validators/) |
++-----------------------------------------------------------------------+
+| **Depends on:** HRD-01                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2125,8 +2390,6 @@ downward.
 | \(4\) Install detect-secrets and scan the repo: pip install           |
 | detect-secrets && detect-secrets scan.                                |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-12, AGT-13                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Python re, logging.Filter, detect-secrets tool                        |
@@ -2146,6 +2409,8 @@ downward.
 | > → [[Trufflehog (alternative                                         |
 | >                                                                     |
 | scanner)]{.underline}](https://github.com/trufflesecurity/trufflehog) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-12, AGT-13                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2176,8 +2441,6 @@ downward.
 | If any test fails, do not proceed to Phase 2 --- an uncontained       |
 | sandbox is a serious security risk.                                   |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-08, AGT-12                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | e2b-code-interpreter SDK, sandbox security configuration              |
@@ -2192,6 +2455,8 @@ downward.
 | >                                                                     |
 | > → [[e2b sandbox                                                     |
 | > limits]{.underline}](https://e2b.dev/docs/sandbox/compute)          |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-08, AGT-12                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2221,8 +2486,6 @@ downward.
 | permission set and add it to your README so future-you knows why      |
 | it\'s set that way.                                                   |
 +-----------------------------------------------------------------------+
-| Depends on: PRE-09, AGT-11                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | GitHub PAT scopes, GitHub REST API permission model                   |
@@ -2241,6 +2504,8 @@ downward.
 | > → [[Principle of least privilege                                    |
 | > (OWASP)]{.underline}](https://owasp.or                              |
 | g/www-project-developer-guide/draft/foundations/security_principles/) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-09, AGT-11                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2272,8 +2537,6 @@ downward.
 | cost per pipeline run? Document these numbers --- they become your    |
 | Phase 2 cost baseline.                                                |
 +-----------------------------------------------------------------------+
-| Depends on: AGT-13, HRD-01                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Python time.perf_counter, Anthropic response.usage, token cost        |
@@ -2290,6 +2553,8 @@ downward.
 | > → [[Python time.perf_counter                                        |
 | > docs]{.under                                                        |
 | line}](https://docs.python.org/3/library/time.html#time.perf_counter) |
++-----------------------------------------------------------------------+
+| **Depends on:** AGT-13, HRD-01                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2325,8 +2590,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Document the before/after delta.                                      |
 +-----------------------------------------------------------------------+
-| Depends on: HRD-08                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Anthropic prompt caching, few-shot prompting, system vs user message  |
@@ -2345,6 +2608,8 @@ downward.
 | > → [[Few-shot prompting                                              |
 | > guide]{.underline}](https://docs.ant                                |
 | hropic.com/en/docs/build-with-claude/prompt-engineering/use-examples) |
++-----------------------------------------------------------------------+
+| **Depends on:** HRD-08                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2378,8 +2643,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Commit it to git --- it\'s part of the project record.                |
 +-----------------------------------------------------------------------+
-| Depends on: HRD-01 through HRD-09                                     |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Markdown                                                              |
@@ -2392,6 +2655,93 @@ downward.
 | > → [[Security risk acceptance                                        |
 | > framework]{.under                                                   |
 | line}](https://owasp.org/www-community/OWASP_Risk_Rating_Methodology) |
++-----------------------------------------------------------------------+
+| **Depends on:** HRD-01 through HRD-09                                 |
++-----------------------------------------------------------------------+
+|                                                                       |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+| **HRD-11 Add PIPELINE_MODE env var with dry_run default** *P1 ---     |
+| Critical*                                                             |
++-----------------------------------------------------------------------+
+| **Description**                                                       |
++-----------------------------------------------------------------------+
+| Add a PIPELINE_MODE environment variable to config.py that controls   |
+| whether the pipeline performs destructive or external-effect          |
+| operations.                                                           |
++-----------------------------------------------------------------------+
+| Supported values: \'dry_run\' (default) and \'live\'.                 |
++-----------------------------------------------------------------------+
+| This exists because of a real incident: during an audit session, the  |
+| pipeline was executed to verify claims and created five real GitHub   |
+| repos before anyone realized.                                         |
++-----------------------------------------------------------------------+
+| Fail-safe defaults prevent this entire class of bug.                  |
++-----------------------------------------------------------------------+
+| Dry-run mode is the default; opting into live mode must be explicit.  |
++-----------------------------------------------------------------------+
+| What dry_run disables: (1) GitHub MCP writes --- the github_node logs |
+| intended actions (repo name, file list, PR title) but does not call   |
+| the GitHub API.                                                       |
++-----------------------------------------------------------------------+
+| No repos are created, no PRs are opened.                              |
++-----------------------------------------------------------------------+
+| \(2\) Runtime manifest file writes to /output/ --- use this to        |
+| inspect what a run would produce without consuming disk or making the |
+| workspace dirty.                                                      |
++-----------------------------------------------------------------------+
+| (Optional: this may be a separate DRY_RUN_NO_DISK flag --- for Phase  |
+| 1B start with just the GitHub guard; the disk guard can come later if |
+| needed.)                                                              |
++-----------------------------------------------------------------------+
+| What dry_run does NOT disable: Anthropic API calls and e2b execution  |
+| continue normally --- those are billable but not destructive, and the |
+| dry-run output is meaningless without them.                           |
++-----------------------------------------------------------------------+
+| If you want to skip those, that\'s a separate future flag (out of     |
+| scope for HRD-11).                                                    |
++-----------------------------------------------------------------------+
+| Implementation: (1) Add PIPELINE_MODE to config.py with default       |
+| \'dry_run\'.                                                          |
++-----------------------------------------------------------------------+
+| Validate against the allowed set on load.                             |
++-----------------------------------------------------------------------+
+| \(2\) Add PIPELINE_MODE to .env.example with a comment explaining the |
+| two values.                                                           |
++-----------------------------------------------------------------------+
+| \(3\) Every agent or node with an external side effect (starting with |
+| github_node from AGT-11) must check config.PIPELINE_MODE and branch   |
+| accordingly.                                                          |
++-----------------------------------------------------------------------+
+| Log at WARNING level whenever dry_run skips an action.                |
++-----------------------------------------------------------------------+
+| \(4\) Add a smoke test in /tests/test_pipeline_mode.py that runs the  |
+| graph end-to-end with PIPELINE_MODE=dry_run and confirms no repo      |
+| creation call is attempted.                                           |
++-----------------------------------------------------------------------+
+| Document in CLAUDE.md and README: the default is dry_run.             |
++-----------------------------------------------------------------------+
+| Runs that should actually publish repos must explicitly set           |
+| PIPELINE_MODE=live in .env or at invocation time.                     |
++-----------------------------------------------------------------------+
+| **Tech Requirements**                                                 |
+|                                                                       |
+| config.py environment validation, python-dotenv, logging, fail-safe   |
+| defaults pattern                                                      |
++-----------------------------------------------------------------------+
+| **Resources & Links**                                                 |
+|                                                                       |
+| > → [[12-factor app config                                            |
+| > pattern]{.underline}](https://12factor.net/config)                  |
+| >                                                                     |
+| > → [[python-dotenv                                                   |
+| > docs]{.underline}](https://pypi.org/project/python-dotenv/)         |
+| >                                                                     |
+| > → [[Fail-safe vs fail-secure                                        |
+| > design]{.underline}](https://owasp.org/www-community/Fail_securely) |
++-----------------------------------------------------------------------+
+| **Depends on:** PRE-06, AGT-11                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2427,8 +2777,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Fix all of these locally --- debugging in the cloud is much slower.   |
 +-----------------------------------------------------------------------+
-| Depends on: HRD-10                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Docker, Dockerfile, .dockerignore, docker build, docker run           |
@@ -2449,6 +2797,8 @@ downward.
 | > → [[.dockerignore                                                   |
 | > reference]{.underli                                                 |
 | ne}](https://docs.docker.com/reference/dockerfile/#dockerignore-file) |
++-----------------------------------------------------------------------+
+| **Depends on:** HRD-10                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2482,8 +2832,6 @@ downward.
 | Commit your analysis to CLOUD_PROVIDER_DECISION.md before deploying   |
 | anything.                                                             |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-01                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | AWS pricing calculator, GCP pricing calculator, Railway pricing       |
@@ -2500,6 +2848,8 @@ downward.
 | >                                                                     |
 | > → [[AWS pricing                                                     |
 | > calculator]{.underline}](https://calculator.aws/pricing/2/home)     |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-01                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2532,8 +2882,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Test all endpoints with curl before moving to auth.                   |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-01                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | FastAPI, uvicorn, BackgroundTasks, Python async/await                 |
@@ -2551,6 +2899,8 @@ downward.
 | > async]{.underline}](https://fastapi.tiangolo.com/async/)            |
 | >                                                                     |
 | > → [[uvicorn docs]{.underline}](https://www.uvicorn.org/)            |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-01                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2583,8 +2933,6 @@ downward.
 | Test: curl with a valid key should succeed, curl without a key should |
 | return 401.                                                           |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-03                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | FastAPI Header dependency, Python secrets module, HTTP 401            |
@@ -2602,6 +2950,8 @@ downward.
 | > → [[Python secrets                                                  |
 | >                                                                     |
 |  module]{.underline}](https://docs.python.org/3/library/secrets.html) |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-03                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2631,8 +2981,6 @@ downward.
 | Verify the /health endpoint is reachable from your browser before     |
 | testing the full pipeline.                                            |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-02, CLD-03, CLD-04                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Cloud CLI (Railway CLI or gcloud CLI or AWS CLI), secrets management  |
@@ -2655,6 +3003,8 @@ downward.
 | >                                                                     |
 | > → [[12-factor app secrets                                           |
 | > guide]{.underline}](https://12factor.net/config)                    |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-02, CLD-03, CLD-04                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2682,8 +3032,6 @@ downward.
 | Verify by running a real pipeline and checking that all expected log  |
 | fields appear.                                                        |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-05                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Structured JSON logging, cloud logging SDK, alerting configuration    |
@@ -2702,6 +3050,8 @@ downward.
 | > → [[AWS CloudWatch                                                  |
 | > Logs]{.underline}](https://docs.a                                   |
 | ws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html) |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-05                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2729,8 +3079,6 @@ downward.
 | This document is what you\'ll hand to the mobile app phase to build   |
 | against.                                                              |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-06                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | curl, Postman, HTTP testing                                           |
@@ -2742,6 +3090,8 @@ downward.
 | > → [[Postman getting                                                 |
 | > started]{.und                                                       |
 | erline}](https://learning.postman.com/docs/getting-started/overview/) |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-06                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2776,8 +3126,6 @@ downward.
 | TypeScript is worth the small overhead --- it will catch API response |
 | shape mismatches before runtime.                                      |
 +-----------------------------------------------------------------------+
-| Depends on: CLD-07                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Node.js (LTS), Expo CLI, React Native, TypeScript, Xcode (for iOS     |
@@ -2801,6 +3149,8 @@ downward.
 | >                                                                     |
 | > → [[Expo Go app (for testing on real                                |
 | > device)]{.underline}](https://expo.dev/go)                          |
++-----------------------------------------------------------------------+
+| **Depends on:** CLD-07                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2837,8 +3187,6 @@ downward.
 | When this works, your entire feedback loop for mobile development     |
 | becomes: save file → see change in 1 second.                          |
 +-----------------------------------------------------------------------+
-| Depends on: MOB-01                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Expo CLI, iOS Simulator (via Xcode), Metro bundler, React Native hot  |
@@ -2857,6 +3205,8 @@ downward.
 | > → [[Expo fast refresh                                               |
 | > expl                                                                |
 | ained]{.underline}](https://docs.expo.dev/workflow/development-mode/) |
++-----------------------------------------------------------------------+
+| **Depends on:** MOB-01                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2886,8 +3236,6 @@ downward.
 +-----------------------------------------------------------------------+
 | Don\'t worry about making it pretty yet --- make it work first.       |
 +-----------------------------------------------------------------------+
-| Depends on: MOB-02, CLD-03                                            |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | React Native (TextInput, View, Text, Pressable, StyleSheet), useState |
@@ -2909,6 +3257,8 @@ downward.
 | > → [[Expo SecureStore                                                |
 | > docs]                                                               |
 | {.underline}](https://docs.expo.dev/versions/latest/sdk/securestore/) |
++-----------------------------------------------------------------------+
+| **Depends on:** MOB-02, CLD-03                                        |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2937,8 +3287,6 @@ downward.
 | Learn the pattern: try/catch around async fetch, set loading false in |
 | the finally block.                                                    |
 +-----------------------------------------------------------------------+
-| Depends on: MOB-03                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | React Navigation, TextInput (multiline), async fetch,                 |
@@ -2961,6 +3309,8 @@ downward.
 | > → [[React Native                                                    |
 | > ActivityIn                                                          |
 | dicator]{.underline}](https://reactnative.dev/docs/activityindicator) |
++-----------------------------------------------------------------------+
+| **Depends on:** MOB-03                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -2993,8 +3343,6 @@ downward.
 | Important: always call clearInterval in the useEffect cleanup         |
 | function, or you\'ll leak timers.                                     |
 +-----------------------------------------------------------------------+
-| Depends on: MOB-04                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | useEffect, setInterval/clearInterval, useRoute hook, conditional      |
@@ -3014,6 +3362,8 @@ downward.
 | >                                                                     |
 | > → [[React Native Animated                                           |
 | > API]{.underline}](https://reactnative.dev/docs/animations)          |
++-----------------------------------------------------------------------+
+| **Depends on:** MOB-04                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -3043,8 +3393,6 @@ downward.
 | Add a \'Run Another\' button at the bottom that navigates back to the |
 | brief submission screen.                                              |
 +-----------------------------------------------------------------------+
-| Depends on: MOB-05                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | FlatList, ScrollView, Linking API, Pressable, useRoute                |
@@ -3062,6 +3410,8 @@ downward.
 | >                                                                     |
 | > → [[React Navigation                                                |
 | > useRoute]{.underline}](https://reactnavigation.org/docs/use-route)  |
++-----------------------------------------------------------------------+
+| **Depends on:** MOB-05                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
@@ -3094,8 +3444,6 @@ downward.
 | Phase 3 is complete when this works on a physical device without you  |
 | touching your laptop.                                                 |
 +-----------------------------------------------------------------------+
-| Depends on: MOB-06                                                    |
-+-----------------------------------------------------------------------+
 | **Tech Requirements**                                                 |
 |                                                                       |
 | Expo Go, physical iPhone, FastAPI CORS middleware                     |
@@ -3113,6 +3461,8 @@ downward.
 | > → [[Expo development builds (when you outgrow Expo                  |
 | > Go)]{.underl                                                        |
 | ine}](https://docs.expo.dev/develop/development-builds/introduction/) |
++-----------------------------------------------------------------------+
+| **Depends on:** MOB-06                                                |
 +-----------------------------------------------------------------------+
 |                                                                       |
 +-----------------------------------------------------------------------+
