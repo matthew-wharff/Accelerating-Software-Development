@@ -131,6 +131,11 @@ class PipelineState(TypedDict):
         status: Overall pipeline status. One of "running", "complete", "failed".
         github_repo_url: HTML URL of the GitHub repo created by github_node.
             None until that node runs successfully.
+        api_metrics_path: Absolute path to the JSONL ledger of Anthropic
+            API calls written by ``scripts.instrumentation``. Set by
+            ``workspace_node``; the file is appended to as each agent runs.
+        api_metrics_summary_path: Absolute path to the rendered markdown
+            cost report written at the end of the pipeline. None until then.
     """
 
     # Input
@@ -141,6 +146,7 @@ class PipelineState(TypedDict):
     run_dir: str
     shared_deps_path: str
     task_queue_path: str
+    api_metrics_path: str
 
     # Architect artifacts — paths only, never content
     architect_spec_path: Optional[str]
@@ -176,6 +182,9 @@ class PipelineState(TypedDict):
     # GitHub output
     github_repo_url: Optional[str]
 
+    # Instrumentation
+    api_metrics_summary_path: Optional[str]
+
 
 def default_state(project_brief: str = "") -> PipelineState:
     """Return a PipelineState initialised with safe defaults.
@@ -198,6 +207,7 @@ def default_state(project_brief: str = "") -> PipelineState:
         run_dir="",
         shared_deps_path="",
         task_queue_path="",
+        api_metrics_path="",
         architect_spec_path=None,
         interfaces_path=None,
         task_queue=[],
@@ -216,4 +226,5 @@ def default_state(project_brief: str = "") -> PipelineState:
         revision_count=0,
         status="running",
         github_repo_url=None,
+        api_metrics_summary_path=None,
     )

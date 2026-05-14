@@ -13,6 +13,7 @@ from pathlib import Path
 import anthropic
 
 from config import ANTHROPIC_API_KEY
+from scripts.instrumentation import instrumented_call
 from scripts.logger import get_logger
 
 logger = get_logger(__name__)
@@ -45,9 +46,15 @@ has_blocking_issues: true|false
 """
 
 
-def _call_claude(system_prompt: str, user_prompt: str) -> str:
+def _call_claude(
+    system_prompt: str, user_prompt: str, run_dir: str | None = None
+) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    response = client.messages.create(
+    response = instrumented_call(
+        client,
+        agent="synthesis",
+        phase="consolidate_feedback",
+        run_dir=run_dir,
         model=MODEL,
         max_tokens=4096,
         system=[
@@ -91,6 +98,7 @@ def run_synthesis(
     security_feedback_path: str | None,
     quality_feedback_path: str | None,
     out_path: str,
+    run_dir: str | None = None,
 ) -> tuple[str, bool]:
     """Consolidate critic reports into a single SYNTHESIS_REPORT.md.
 
@@ -130,7 +138,7 @@ def run_synthesis(
 
     logger.info("synthesis: calling Claude to consolidate feedback")
     try:
-        raw = _call_claude(_SYSTEM_PROMPT, user_prompt)
+        raw = _call_claude(_SYSTEM_PROMPT, user_prompt, run_dir=run_dir)
     except anthropic.APIError as e:
         logger.error("synthesis: Claude API call failed: %s", e)
         raise

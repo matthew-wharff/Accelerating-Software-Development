@@ -4,6 +4,7 @@ import anthropic
 
 from config import ANTHROPIC_API_KEY
 from scripts.file_writer import write_project_files
+from scripts.instrumentation import instrumented_call
 from scripts.logger import get_logger
 
 logger = get_logger(__name__)
@@ -134,7 +135,11 @@ def run_coder_task(
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     try:
-        gen_response = client.messages.create(
+        gen_response = instrumented_call(
+            client,
+            agent="coder",
+            phase="code_generation",
+            run_dir=run_dir,
             model=MODEL,
             max_tokens=8192,
             system=[
@@ -181,7 +186,11 @@ def run_coder_task(
     )
 
     try:
-        ext_response = client.messages.create(
+        ext_response = instrumented_call(
+            client,
+            agent="coder",
+            phase="interface_extraction",
+            run_dir=run_dir,
             model=MODEL,
             max_tokens=1024,
             system=[

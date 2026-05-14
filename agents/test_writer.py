@@ -16,6 +16,7 @@ import anthropic
 
 from config import ANTHROPIC_API_KEY
 from scripts.file_writer import write_project_files
+from scripts.instrumentation import instrumented_call
 from scripts.logger import get_logger
 
 logger = get_logger(__name__)
@@ -223,7 +224,11 @@ def run_test_writer(
         )
 
         try:
-            response = client.messages.create(
+            response = instrumented_call(
+                client,
+                agent="test_writer",
+                phase=f"test_gen:{source_path.name}",
+                run_dir=run_dir,
                 model=MODEL,
                 max_tokens=4096,
                 system=[
@@ -307,15 +312,16 @@ def run_test_writer(
 
 if __name__ == "__main__":
     _repo = Path(__file__).parent.parent
-    _sample = str(_repo / "output" / "hello_ralph" / "utils" / "greeter.py")
-    _interfaces = str(_repo / "context" / "INTERFACES.py")
-    _shared_deps = str(_repo / "context" / "shared_dependencies.md")
+    _run_dir = _repo / "output" / "hello_ralph"
+    _sample = str(_run_dir / "code" / "utils" / "greeter.py")
+    _interfaces = str(_run_dir / "context" / "INTERFACES.py")
+    _shared_deps = str(_run_dir / "context" / "shared_dependencies.md")
 
     written = run_test_writer(
         generated_file_paths=[_sample],
         interfaces_path=_interfaces,
         shared_deps_path=_shared_deps,
-        project_name="hello_ralph",
+        run_dir=str(_run_dir),
     )
     for p in written:
         logger.info("Smoke test wrote: %s", p)

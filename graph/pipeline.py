@@ -35,6 +35,7 @@ from agents.security_reviewer import run_security_reviewer
 from agents.spec_clarifier import run_spec_clarifier
 from agents.synthesis import run_synthesis
 from agents.test_writer import run_test_writer
+from scripts.instrumentation import metrics_path_for, write_summary
 from scripts.logger import get_logger
 from scripts.redaction import redact_state
 from scripts.workspace import create_run_workspace
@@ -436,6 +437,7 @@ def architect_dispatch_node(state: PipelineState) -> dict:
             interface_signature=last_entry["interface_signature"],
             spec_path=state.get("architect_spec_path") or "",
             shared_deps_path=state["shared_deps_path"],
+            run_dir=state.get("run_dir") or None,
         )
     except Exception as exc:
         logger.error(
@@ -488,6 +490,7 @@ def architect_dispatch_node(state: PipelineState) -> dict:
             failing_task=current_task,
             spec_path=state.get("architect_spec_path") or "",
             shared_deps_path=state["shared_deps_path"],
+            run_dir=state.get("run_dir") or None,
         )
     except Exception as exc:
         logger.error(
@@ -531,12 +534,17 @@ def synthesis_node(state: PipelineState) -> dict:
     """
     t0 = time.perf_counter()
     logger.info("synthesis_node: consolidating critic feedback")
+    out_path = state.get("synthesis_report_path")
+    if not out_path:
+        logger.error("synthesis_node: synthesis_report_path is not set in state")
+        return {"synthesis_report_path": None}
     try:
         report_path, has_blocking = run_synthesis(
             test_feedback_path=state.get("test_feedback_path"),
             security_feedback_path=state.get("security_feedback_path"),
             quality_feedback_path=state.get("quality_feedback_path"),
-            out_path=state["synthesis_report_path"],
+            out_path=out_path,
+            run_dir=state.get("run_dir") or None,
         )
     except Exception as exc:
         logger.error("synthesis_node: failed: %s", exc)
@@ -628,6 +636,7 @@ def architect_revision_node(state: PipelineState) -> dict:
             shared_deps_path=state.get("shared_deps_path", ""),
             generated_file_paths=state.get("generated_file_paths", []),
             revision_number=revision_number,
+            run_dir=state.get("run_dir") or None,
         )
     except Exception as exc:
         logger.error("architect_revision_node: run_architect_revision failed: %s", exc)
@@ -731,16 +740,33 @@ def e2b_node(state: PipelineState) -> dict:
 def github_node(state: PipelineState) -> dict:
     """Route to dry-run or live GitHub publish based on PIPELINE_MODE.
 
+    Also renders the per-run API cost summary from the metrics ledger
+    written during the pipeline — this is the last node, so it is the
+    one chance to capture totals before the graph exits.
+
     Args:
         state: The current pipeline state.
 
     Returns:
-        Partial state dict updating ``github_repo_url`` and ``status``.
+        Partial state dict updating ``github_repo_url``, ``status``, and
+        ``api_metrics_summary_path``.
     """
     if config.PIPELINE_MODE == "dry_run":
         logger.info("github_node: DRY RUN — no repo will be created")
-        return _github_node_dry_run(state)
-    return _github_node_live(state)
+        result = _github_node_dry_run(state)
+    else:
+        result = _github_node_live(state)
+
+    run_dir = state.get("run_dir")
+    if run_dir:
+        try:
+            summary_path = write_summary(run_dir)
+            result["api_metrics_summary_path"] = str(summary_path)
+        except Exception as exc:
+            logger.warning("github_node: failed to write metrics summary: %s", exc)
+            result["api_metrics_summary_path"] = None
+
+    return result
 
 
 def _github_node_dry_run(state: PipelineState) -> dict:
@@ -833,6 +859,7 @@ def workspace_node(state: PipelineState) -> dict:
         "run_dir": str(run_dir),
         "shared_deps_path": str(run_dir / "context" / "shared_dependencies.md"),
         "task_queue_path": str(run_dir / "context" / "task_queue.json"),
+        "api_metrics_path": str(metrics_path_for(run_dir)),
         "architect_spec_path": str(run_dir / "context" / "ARCHITECT_SPEC.md"),
         "interfaces_path": str(run_dir / "context" / "INTERFACES.py"),
         "synthesis_report_path": str(run_dir / "context" / "SYNTHESIS_REPORT.md"),

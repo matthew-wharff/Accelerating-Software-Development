@@ -7,6 +7,7 @@ from pathlib import Path
 import anthropic
 
 from config import ANTHROPIC_API_KEY
+from scripts.instrumentation import instrumented_call
 from scripts.logger import get_logger
 from state.schema import TaskEntry
 
@@ -197,7 +198,14 @@ _REQUIRED_TASK_KEYS = {
 
 
 def _call_claude(
-    system_prompt: str, user_prompt: str, max_tokens: int, thinking_budget: int = 0
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int,
+    thinking_budget: int = 0,
+    *,
+    phase: str,
+    run_dir: str | None,
+    model: str = MODEL,
 ) -> str:
     """Call Claude with an ephemeral-cached system prompt and return raw text.
 
@@ -210,6 +218,12 @@ def _call_claude(
         user_prompt: The user turn content.
         max_tokens: Maximum tokens for the response (must exceed thinking_budget).
         thinking_budget: Token budget for extended thinking; 0 disables it.
+        phase: Label routed through ``instrumented_call`` so the JSONL ledger
+            distinguishes the four Architect passes from one another.
+        run_dir: Run workspace root; metrics are appended under it. ``None``
+            disables disk persistence (used by stand-alone smoke runs).
+        model: Override the model id. Defaults to ``MODEL`` (Sonnet) but the
+            evaluate path passes Haiku to keep critic cost down.
 
     Returns:
         Raw text content from the first TextBlock in the response.
@@ -221,7 +235,7 @@ def _call_claude(
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     kwargs: dict = {
-        "model": MODEL,
+        "model": model,
         "max_tokens": max_tokens,
         "system": [
             {
@@ -236,7 +250,9 @@ def _call_claude(
         kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
     try:
-        response = client.messages.create(**kwargs)
+        response = instrumented_call(
+            client, agent="architect", phase=phase, run_dir=run_dir, **kwargs
+        )
     except anthropic.APIError as e:
         logger.error("Claude API call failed: %s", e)
         raise
@@ -334,7 +350,12 @@ def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
         "Produce ARCHITECT_SPEC.md now."
     )
     spec_text = _call_claude(
-        SYSTEM_PROMPT_SPEC, spec_user_prompt, max_tokens=8192, thinking_budget=5000
+        SYSTEM_PROMPT_SPEC,
+        spec_user_prompt,
+        max_tokens=8192,
+        thinking_budget=5000,
+        phase="spec_generation",
+        run_dir=run_dir,
     )
     spec_path = context_dir / "ARCHITECT_SPEC.md"
     spec_path.write_text(spec_text, encoding="utf-8")
@@ -353,6 +374,8 @@ def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
         interfaces_user_prompt,
         max_tokens=4096,
         thinking_budget=2000,
+        phase="interfaces_generation",
+        run_dir=run_dir,
     )
     interfaces_text = _strip_markdown_fence(interfaces_text, "python")
     interfaces_path = context_dir / "INTERFACES.py"
@@ -379,6 +402,8 @@ def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
         shared_deps_user_prompt,
         max_tokens=6144,
         thinking_budget=3500,
+        phase="shared_deps_generation",
+        run_dir=run_dir,
     )
     shared_deps_path = context_dir / "shared_dependencies.md"
     shared_deps_path.write_text(shared_deps_text, encoding="utf-8")
@@ -398,7 +423,11 @@ def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
         "Remember: topological order, raw JSON only, first char `[`, last char `]`."
     )
     task_queue_raw = _call_claude(
-        SYSTEM_PROMPT_TASK_QUEUE, task_queue_user_prompt, max_tokens=4096
+        SYSTEM_PROMPT_TASK_QUEUE,
+        task_queue_user_prompt,
+        max_tokens=4096,
+        phase="task_queue_generation",
+        run_dir=run_dir,
     )
 
     try:
@@ -476,6 +505,7 @@ def run_architect_evaluate(
     interface_signature: str,
     spec_path: str,
     shared_deps_path: str,
+    run_dir: str | None = None,
 ) -> tuple[bool, str]:
     """Evaluate whether a generated file's interface satisfies its task contract.
 
@@ -488,6 +518,8 @@ def run_architect_evaluate(
         interface_signature: Extracted public interface returned by run_coder_task.
         spec_path: Absolute path to architect_spec.md on disk (reserved for future use).
         shared_deps_path: Absolute path to shared_dependencies.md on disk.
+        run_dir: Run workspace root for instrumentation. ``None`` disables
+            metric persistence (used by stand-alone smoke runs).
 
     Returns:
         Tuple of (passed, correction_notes). passed is True if the interface
@@ -512,7 +544,11 @@ def run_architect_evaluate(
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     try:
-        response = client.messages.create(
+        response = instrumented_call(
+            client,
+            agent="architect_evaluate",
+            phase="evaluate",
+            run_dir=run_dir,
             model=MODEL_HAIKU,
             max_tokens=128,
             system=[
@@ -558,6 +594,7 @@ def run_architect_redecompose(
     failing_task: TaskEntry,
     spec_path: str,
     shared_deps_path: str,
+    run_dir: str | None = None,
 ) -> list[TaskEntry]:
     """Re-decompose a repeatedly-failing task into 2 smaller subtasks.
 
@@ -595,7 +632,13 @@ def run_architect_redecompose(
         "Return ONLY the raw JSON array."
     )
 
-    raw_json = _call_claude(SYSTEM_PROMPT_REDECOMPOSE, user_prompt, max_tokens=1024)
+    raw_json = _call_claude(
+        SYSTEM_PROMPT_REDECOMPOSE,
+        user_prompt,
+        max_tokens=1024,
+        phase="redecompose",
+        run_dir=run_dir,
+    )
     cleaned = _strip_markdown_fence(raw_json, "json")
 
     try:
@@ -670,6 +713,7 @@ def run_architect_revision(
     shared_deps_path: str,
     generated_file_paths: list[str],
     revision_number: int,
+    run_dir: str | None = None,
 ) -> list[TaskEntry]:
     """Produce targeted revision tasks from a synthesis report.
 
@@ -729,7 +773,13 @@ def run_architect_revision(
         "Produce revision tasks now. Return ONLY the raw JSON array."
     )
 
-    raw_json = _call_claude(SYSTEM_PROMPT_REVISION, user_prompt, max_tokens=2048)
+    raw_json = _call_claude(
+        SYSTEM_PROMPT_REVISION,
+        user_prompt,
+        max_tokens=2048,
+        phase=f"revision_{revision_number}",
+        run_dir=run_dir,
+    )
     cleaned = _strip_markdown_fence(raw_json, "json")
 
     try:

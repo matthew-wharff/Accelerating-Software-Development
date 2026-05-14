@@ -12,6 +12,7 @@ from pathlib import Path
 import anthropic
 
 from config import ANTHROPIC_API_KEY
+from scripts.instrumentation import instrumented_call
 from scripts.logger import get_logger
 
 logger = get_logger(__name__)
@@ -127,7 +128,11 @@ def run_security_reviewer(
         )
 
         try:
-            response = client.messages.create(
+            response = instrumented_call(
+                client,
+                agent="security_reviewer",
+                phase=f"review:{source_path.name}",
+                run_dir=run_dir,
                 model=MODEL,
                 max_tokens=2048,
                 system=[

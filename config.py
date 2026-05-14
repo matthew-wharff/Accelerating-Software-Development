@@ -37,6 +37,27 @@ def _get_block_egress() -> bool:
 SANDBOX_BLOCK_EGRESS: bool = _get_block_egress()
 
 
+# Per-model pricing in USD per million tokens. Source:
+# https://platform.claude.com/docs/en/about-claude/pricing (verified 2026-05).
+# Update this table whenever the published rates change — every downstream
+# cost calculation reads from here. Keys must match the exact ``model`` id
+# passed to ``client.messages.create`` so look-ups don't silently miss.
+MODEL_PRICING: dict[str, dict[str, float]] = {
+    "claude-sonnet-4-20250514": {
+        "input": 3.00,
+        "cache_write_5m": 3.75,
+        "cache_read": 0.30,
+        "output": 15.00,
+    },
+    "claude-haiku-4-5-20251001": {
+        "input": 1.00,
+        "cache_write_5m": 1.25,
+        "cache_read": 0.10,
+        "output": 5.00,
+    },
+}
+
+
 _MAX_BRIEF_LENGTH = 4000
 
 _INJECTION_PATTERNS = [

@@ -15,6 +15,7 @@ import anthropic
 
 from config import ANTHROPIC_API_KEY
 from scripts.file_writer import write_project_files
+from scripts.instrumentation import instrumented_call
 from scripts.logger import get_logger
 
 logger = get_logger(__name__)
@@ -135,7 +136,11 @@ def run_devops(
 
     logger.info("run_devops: calling %s for run_dir '%s'", MODEL, run_dir)
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    message = client.messages.create(
+    message = instrumented_call(
+        client,
+        agent="devops",
+        phase="infra_generation",
+        run_dir=run_dir,
         model=MODEL,
         max_tokens=4096,
         system=_SYSTEM_PROMPT,
