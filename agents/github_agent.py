@@ -19,6 +19,7 @@ import github as gh
 
 from config import GITHUB_PAT
 from scripts.logger import get_logger
+from scripts.workspace import get_code_prefix
 
 logger = get_logger(__name__)
 
@@ -140,9 +141,9 @@ def _find_output_prefix(paths: list[str]) -> str:
         The common output prefix string, or empty string if not determinable.
     """
     for p in paths:
-        match = re.match(r"(.*?/output/[^/]+/code/)", p)
-        if match:
-            return match.group(1)
+        prefix = get_code_prefix(p)
+        if prefix:
+            return prefix
     return ""
 
 

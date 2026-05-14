@@ -22,6 +22,7 @@ import re
 from typing import Any
 
 from agents.architect import (
+    run_architect,
     run_architect_evaluate,
     run_architect_redecompose,
     run_architect_revision,
@@ -31,9 +32,11 @@ from agents.coder import run_coder_task
 from agents.devops import run_devops
 from agents.github_agent import run_github
 from agents.security_reviewer import run_security_reviewer
+from agents.spec_clarifier import run_spec_clarifier
 from agents.synthesis import run_synthesis
 from agents.test_writer import run_test_writer
 from scripts.logger import get_logger
+from scripts.redaction import redact_state
 from scripts.workspace import create_run_workspace
 import config
 from state.schema import (
@@ -666,6 +669,7 @@ def e2b_node(state: PipelineState) -> dict:
         Partial state dict updating ``e2b_output``.
     """
     from e2b_code_interpreter import Sandbox
+    from scripts.sandbox import wrap_user_command
 
     file_paths: list[str] = state.get("generated_file_paths", [])
     if not file_paths:
@@ -696,7 +700,7 @@ def e2b_node(state: PipelineState) -> dict:
         entrypoint = "main.py" if "main.py" in names else names[0]
 
         result = sandbox.commands.run(
-            f"cd /home/user && python3 {entrypoint}",
+            wrap_user_command(f"cd /home/user && python3 {entrypoint}"),
             timeout=30,
         )
         stdout = result.stdout or ""
@@ -822,8 +826,10 @@ def _route_after_architect_dispatch(state: PipelineState) -> str:
 
 def workspace_node(state: PipelineState) -> dict:
     """Create the run workspace and populate path fields in state."""
-    run_dir = create_run_workspace(state["project_brief"])
+    validated_brief = config.validate_brief(state["project_brief"])
+    run_dir = create_run_workspace(validated_brief)
     return {
+        "project_brief": validated_brief,
         "run_dir": str(run_dir),
         "shared_deps_path": str(run_dir / "context" / "shared_dependencies.md"),
         "task_queue_path": str(run_dir / "context" / "task_queue.json"),
@@ -833,12 +839,89 @@ def workspace_node(state: PipelineState) -> dict:
     }
 
 
+def spec_clarifier_node(state: PipelineState) -> dict:
+    """Run the Spec Clarifier on the project brief.
+
+    Calls run_spec_clarifier() to produce clarified_brief.md inside the
+    per-run workspace. Stores only the path in state — never brief content.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict updating ``clarified_brief_path``.
+    """
+    t0 = time.perf_counter()
+    logger.info("spec_clarifier_node: starting")
+    try:
+        conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
+        result = run_spec_clarifier(
+            project_brief=state["project_brief"],
+            conventions=conventions,
+            run_dir=state["run_dir"],
+        )
+    except Exception as exc:
+        logger.error("spec_clarifier_node: failed: %s", exc)
+        return {"clarified_brief_path": ""}
+    logger.info(
+        "spec_clarifier_node: done in %.2fs — %s",
+        time.perf_counter() - t0,
+        result["clarified_brief_path"],
+    )
+    return {"clarified_brief_path": result["clarified_brief_path"]}
+
+
+def architect_node(state: PipelineState) -> dict:
+    """Run the two-pass Architect to produce spec, interfaces, deps, and task queue.
+
+    Reads the clarified brief from disk and delegates to run_architect(),
+    which writes ARCHITECT_SPEC.md, INTERFACES.py, shared_dependencies.md,
+    and task_queue.json into run_dir/context/. Stores task queue + paths
+    in state — never file content.
+
+    Args:
+        state: The current pipeline state.
+
+    Returns:
+        Partial state dict updating the architect path fields and task_queue.
+    """
+    t0 = time.perf_counter()
+    logger.info("architect_node: starting")
+    try:
+        conventions = CONVENTIONS_PATH.read_text(encoding="utf-8")
+        clarified_brief = Path(state["clarified_brief_path"]).read_text(
+            encoding="utf-8"
+        )
+        result = run_architect(
+            clarified_brief=clarified_brief,
+            conventions=conventions,
+            run_dir=state["run_dir"],
+        )
+    except Exception as exc:
+        logger.error("architect_node: failed: %s", exc)
+        return {"status": "failed"}
+    logger.info(
+        "architect_node: done in %.2fs — %d tasks queued",
+        time.perf_counter() - t0,
+        len(result["task_queue"]),
+    )
+    return {
+        "architect_spec_path": result["architect_spec_path"],
+        "interfaces_path": result["interfaces_path"],
+        "shared_deps_path": result["shared_deps_path"],
+        "task_queue_path": result["task_queue_path"],
+        "task_queue": result["task_queue"],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Graph construction — compiled at module level for importability
 # ---------------------------------------------------------------------------
 
 _builder = StateGraph(PipelineState)
 _builder.add_node("workspace", workspace_node)
+_builder.add_node("spec_clarifier", spec_clarifier_node)
+_builder.add_node("architect", architect_node)
 _builder.add_node("architect_dispatch", architect_dispatch_node)
 _builder.add_node("coder", coder_node)
 _builder.add_node("e2b", e2b_node)
@@ -851,7 +934,9 @@ _builder.add_node("architect_revision", architect_revision_node)
 _builder.add_node("github", github_node)
 
 _builder.add_edge(START, "workspace")
-_builder.add_edge("workspace", "architect_dispatch")
+_builder.add_edge("workspace", "spec_clarifier")
+_builder.add_edge("spec_clarifier", "architect")
+_builder.add_edge("architect", "architect_dispatch")
 _builder.add_conditional_edges(
     "architect_dispatch",
     _route_after_architect_dispatch,
@@ -909,13 +994,15 @@ if __name__ == "__main__":
     logger.info("Invoking pipeline graph...")
     final_state = app.invoke(initial_state)
 
-    logger.info("Pipeline status   : %s", final_state["status"])
-    logger.info("Generated files   : %s", final_state["generated_file_paths"])
-    logger.info("Test feedback     : %s", final_state.get("test_feedback_path"))
-    logger.info("Security feedback : %s", final_state.get("security_feedback_path"))
-    logger.info("Quality feedback  : %s", final_state.get("quality_feedback_path"))
-    logger.info("Task log          : %s", final_state["task_log"])
-    logger.info("GitHub repo       : %s", final_state.get("github_repo_url"))
+    redacted = redact_state(final_state)
+    logger.info("Pipeline status   : %s", redacted["status"])
+    logger.info("Generated files   : %s", redacted["generated_file_paths"])
+    logger.info("Test feedback     : %s", redacted.get("test_feedback_path"))
+    logger.info("Security feedback : %s", redacted.get("security_feedback_path"))
+    logger.info("Quality feedback  : %s", redacted.get("quality_feedback_path"))
+    logger.info("Task log          : %s", redacted["task_log"])
+    logger.info("GitHub repo       : %s", redacted.get("github_repo_url"))
+    logger.debug("Final state (redacted): %s", redacted)
 
     assert final_state["generated_file_paths"], "generated_file_paths must not be empty"
     for p in final_state["generated_file_paths"]:

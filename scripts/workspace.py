@@ -38,6 +38,18 @@ def create_run_workspace(project_brief: str) -> Path:
     return run_dir.absolute()
 
 
+def get_code_prefix(file_path: str) -> str:
+    """Extract the 'output/<run_id>/code/' prefix from a file path.
+
+    Used by the GitHub agent to strip the prefix when committing files
+    so they land at the repo root instead of under a code/ subfolder.
+
+    Returns the matched prefix string, or empty string if no match.
+    """
+    match = re.match(r"(.*?/output/[^/]+/code/)", file_path)
+    return match.group(1) if match else ""
+
+
 def _slugify(text: str) -> str:
     """Convert arbitrary text to a filesystem-safe slug."""
     text = text.lower()

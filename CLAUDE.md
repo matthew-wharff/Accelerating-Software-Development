@@ -128,7 +128,7 @@ The `reports/` and runtime `context/` subfolders are NOT committed to GitHub. Th
 - **Error handling:** explicit `try/except` with typed exceptions; never bare `except:`
 - **Docstrings:** Google style on all public functions and classes
 - **Type annotations:** required on all public function signatures
-- **NEVER use `print()`** — use `from utils.logger import logger` and log at the appropriate level (DEBUG/INFO/WARNING/ERROR)
+- **NEVER use `print()`** — use `from scripts.logger import get_logger` (e.g. `logger = get_logger(__name__)`) and log at the appropriate level (DEBUG/INFO/WARNING/ERROR). A redaction filter is attached automatically; when logging state-shaped data, route it through `redact_state` from `scripts.redaction` first.
 - **NEVER store generated code or agent outputs in LangGraph state** — write to disk under `output/<run_id>/` and store the path
 - **NEVER write to `/context/` from agent code** — it's stable, human-authored input only
 - **NEVER hardcode runtime paths** — read from `state["run_dir"]` or the specific path field

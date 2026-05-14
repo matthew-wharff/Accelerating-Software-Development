@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Optional, TypedDict
 
+from config import validate_brief
+
 
 class TaskEntry(TypedDict):
     """A single coding task from the Architect's ordered task queue.
@@ -189,8 +191,9 @@ def default_state(project_brief: str = "") -> PipelineState:
         A fully-populated PipelineState dict ready to be passed to
         ``graph.invoke()``.
     """
+    cleaned_brief = validate_brief(project_brief) if project_brief else ""
     return PipelineState(
-        project_brief=project_brief,
+        project_brief=cleaned_brief,
         clarified_brief_path="",
         run_dir="",
         shared_deps_path="",
