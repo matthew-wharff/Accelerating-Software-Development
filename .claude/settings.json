@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/pip freeze:*)",
+      "Bash(ls /home/dev-projects/Repos/Accelerating-Software-Development/.venv/bin/python*)",
+      "Bash(/home/dev-projects/Repos/Accelerating-Software-Development/.venv/bin/python3 -m pip install anthropic)",
+      "Bash(grep -E \"\\\\.py$|^-\")",
+      "Bash(python3 -c \"import config; print\\(config.__file__\\)\")",
+      "Bash(python3 -c \"import os; os.chdir\\('/home/dev-projects/Repos/Accelerating-Software-Development'\\); from pathlib import Path; import sys; sys.path.insert\\(0, str\\(Path.cwd\\(\\)\\)\\); exec\\(open\\('.env'\\).read\\(\\).strip\\(\\).replace\\('ANTHROPIC_API_KEY=', 'ANTHROPIC_API_KEY = '\\)\\); print\\(ANTHROPIC_API_KEY\\)\")",
+      "Bash(python3)",
+      "Bash(python3 -c \"import sys; sys.path.insert\\(0, '.'\\); import importlib; spec = importlib.util.find_spec\\('config'\\); print\\(spec.origin if spec else 'Not found'\\)\")",
+      "Bash(python3 -c \"from github import Github, Auth; g = Github.__mro__; print\\(g\\)\")",
+      "Bash(cat > *)",
+      "Bash(awk '{print $NF}')",
+      "Bash(ls /home/dev-projects/.claude/plans/ 2>/dev/null && echo \"---\" && cat /home/dev-projects/Repos/Accelerating-Software-Development/.gitignore 2>/dev/null | head -30)",
+      "Read(//home/dev-projects/.claude/plans/**)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
