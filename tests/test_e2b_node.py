@@ -5,20 +5,23 @@ Mocks e2b_code_interpreter.Sandbox so no real API calls are made.
 
 import sys
 import os
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 
+from state.schema import PipelineState
+
 load_dotenv()
 
 
-def _make_state(file_paths: list[str]) -> dict:
-    return {
+def _make_state(file_paths: list[str]) -> PipelineState:
+    return cast(PipelineState, {
         "generated_file_paths": file_paths,
         "project_brief": "test project",
-    }
+    })
 
 
 def _make_sandbox_result(stdout: str, stderr: str, exit_code: int) -> MagicMock:

@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from agents.code_quality import run_code_quality
 from tests.conftest import make_text_response
 

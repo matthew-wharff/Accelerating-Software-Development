@@ -816,6 +816,8 @@ def run_architect_revision(
 
 
 if __name__ == "__main__":
+    from scripts.workspace import create_run_workspace
+
     conventions_path = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
     conventions_content = conventions_path.read_text(encoding="utf-8")
 
@@ -827,7 +829,8 @@ if __name__ == "__main__":
         "Include an async background job that marks overdue tasks as expired."
     )
 
-    result = run_architect(sample_brief, conventions_content)
+    run_dir = str(create_run_workspace(sample_brief))
+    result = run_architect(sample_brief, conventions_content, run_dir)
     for key, value in result.items():
         if key != "task_queue":
             print(f"{key}: {value}")

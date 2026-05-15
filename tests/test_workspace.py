@@ -1,9 +1,5 @@
 """Unit tests for scripts/workspace.py."""
 
-from pathlib import Path
-
-import pytest
-
 from scripts.workspace import create_run_workspace
 
 

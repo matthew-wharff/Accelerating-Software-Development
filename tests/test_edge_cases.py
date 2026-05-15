@@ -32,7 +32,7 @@ from agents.architect import (
 )
 from agents.spec_clarifier import run_spec_clarifier
 from graph.pipeline import _project_name_slug, architect_dispatch_node
-from state.schema import TaskEntry, default_state
+from state.schema import PipelineState, TaskEntry, default_state
 from tests.conftest import make_text_response
 
 
@@ -194,7 +194,7 @@ def _failing_task() -> TaskEntry:
     )
 
 
-def _state_with_one_failed_log(failure_count: int) -> dict:
+def _state_with_one_failed_log(failure_count: int) -> PipelineState:
     """Build minimal state needed by architect_dispatch_node."""
     state = default_state(project_brief="x")
     state["task_queue"] = [_failing_task()]

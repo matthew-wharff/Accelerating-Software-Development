@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from agents.synthesis import run_synthesis
 from tests.conftest import make_text_response
 

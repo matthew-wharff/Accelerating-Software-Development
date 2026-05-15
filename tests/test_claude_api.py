@@ -14,4 +14,6 @@ def test_claude_api():
         max_tokens=100,
         messages=[{"role": "user", "content": "Say hello!"}],
     )
-    assert response.content[0].text is not None
+    block = response.content[0]
+    assert isinstance(block, anthropic.types.TextBlock)
+    assert block.text is not None

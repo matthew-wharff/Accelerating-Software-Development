@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from agents.security_reviewer import run_security_reviewer
 from tests.conftest import make_text_response
 

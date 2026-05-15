@@ -186,7 +186,7 @@ def main() -> int:
     print("=" * 78)
     print("e2b sandbox security verification")
     print("=" * 78)
-    print(f"Sandbox config under test: Sandbox.create(timeout=30) — same as graph.pipeline.e2b_node")
+    print("Sandbox config under test: Sandbox.create(timeout=30) — same as graph.pipeline.e2b_node")
     print(f"e2b_code_interpreter SDK: present; API key loaded from env: {bool(config.E2B_API_KEY)}")
 
     host_canary = Path("/tmp") / f"host_canary_{uuid.uuid4().hex}.txt"
