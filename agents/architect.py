@@ -425,7 +425,7 @@ def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
     task_queue_raw = _call_claude(
         SYSTEM_PROMPT_TASK_QUEUE,
         task_queue_user_prompt,
-        max_tokens=4096,
+        max_tokens=16384,
         phase="task_queue_generation",
         run_dir=run_dir,
     )

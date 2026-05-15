@@ -58,7 +58,7 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
 }
 
 
-_MAX_BRIEF_LENGTH = 4000
+_MAX_BRIEF_LENGTH = 16000
 
 _INJECTION_PATTERNS = [
     re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts?|rules?)", re.IGNORECASE),

@@ -1002,21 +1002,24 @@ app = _builder.compile()
 if __name__ == "__main__":
     import sys
 
-    initial_state = default_state(project_brief="MVP pipeline smoke test")
-    initial_state["task_queue"] = [
-        TaskEntry(
-            task_id="task_001",
-            target_file="hello_pipeline.py",
-            description=(
-                # "Write a Python module with a single function `greet(name: str) -> str` "
-                # "that returns the string 'Hello, {name}!'. "
-                # "Include a Google-style docstring and type annotations."
-                "Build a Python REST API for a task manager with SQLite. Include endpoints for create, read, update, delete tasks. Use FastAPI and include basic input validation."
-            ),
-            interface_refs=[],
-            dependency_paths=[],
+    if len(sys.argv) < 2:
+        print(
+            "Usage: python3 -m graph.pipeline <brief-or-path>\n"
+            "  <brief-or-path> may be a literal brief string or a path to a .md file.",
+            file=sys.stderr,
         )
-    ]
+        sys.exit(2)
+
+    arg = sys.argv[1]
+    arg_path = Path(arg)
+    if arg_path.is_file():
+        project_brief = arg_path.read_text(encoding="utf-8")
+        logger.info("Loaded project brief from %s (%d chars)", arg_path, len(project_brief))
+    else:
+        project_brief = arg
+        logger.info("Using literal project brief from CLI (%d chars)", len(project_brief))
+
+    initial_state = default_state(project_brief=project_brief)
 
     logger.info("Invoking pipeline graph...")
     final_state = app.invoke(initial_state)

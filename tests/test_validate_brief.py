@@ -2,7 +2,7 @@
 
 Covers the three checks documented in SECURITY.md:
     1. Control-character strip
-    2. 4000-character length cap
+    2. 16000-character length cap
     3. Regex blocklist of known injection patterns
 
 Plus type validation, empty-input handling, idempotence, and a bypass
