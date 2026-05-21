@@ -12,9 +12,21 @@ GITHUB_PAT: str = os.environ["GITHUB_PAT"]
 Mode = Literal["live", "dry_run"]
 
 def _get_mode() -> Mode:
-    val = os.environ["PIPELINE_MODE"]
-    if val not in get_args(Mode):
-        raise ValueError(f"Invalid PIPELINE_MODE: {val!r}")
+    """Load PIPELINE_MODE from env with a fail-safe default of ``dry_run``.
+
+    Returns:
+        The validated mode literal.
+
+    Raises:
+        ValueError: If ``PIPELINE_MODE`` is set to anything other than the
+            members of ``Mode``.
+    """
+    val = os.environ.get("PIPELINE_MODE", "dry_run")
+    valid = get_args(Mode)
+    if val not in valid:
+        raise ValueError(
+            f"Invalid PIPELINE_MODE: {val!r} (valid: {', '.join(valid)})"
+        )
     return cast(Mode, val)
 
 PIPELINE_MODE: Mode = _get_mode()
@@ -75,7 +87,7 @@ def validate_brief(brief: str) -> str:
     """Validate and sanitize a user-supplied project brief.
 
     Strips ASCII control characters (including null bytes), enforces a
-    4000-character cap, and rejects briefs containing known prompt-injection
+    16000-character cap, and rejects briefs containing known prompt-injection
     trigger phrases. Idempotent: re-validating a previously-validated brief
     is a no-op.
 

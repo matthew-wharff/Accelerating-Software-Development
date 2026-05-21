@@ -58,6 +58,10 @@ class TestControlCharStrip:
 
 
 class TestLengthCap:
+    def test_cap_value_is_locked_at_16000(self):
+        """Lock the cap value so future refactors don't silently change it."""
+        assert _MAX_BRIEF_LENGTH == 16000
+
     def test_under_cap_passes(self):
         brief = "a" * _MAX_BRIEF_LENGTH
         assert validate_brief(brief) == brief

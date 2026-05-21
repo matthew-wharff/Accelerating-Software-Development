@@ -148,7 +148,7 @@ This project was not vibe-coded. A meaningful amount of design and research work
 | **2** | Cloud-hosted, authenticated API in front of the pipeline | Next |
 | **3** | iPhone app — submit briefs, view results, browse generated repos | Planned |
 
-Phase 1B sign-off artifacts currently in tree: [SECURITY.md](SECURITY.md) (prompt-injection audit + PAT scope rules), [SANDBOX_SECURITY_VERIFICATION.md](SANDBOX_SECURITY_VERIFICATION.md) (e2b isolation tests), and [REFACTOR_AUDIT.md](REFACTOR_AUDIT.md) (stable-vs-runtime context split audit).
+Phase 1B sign-off artifacts currently in tree: [SECURITY.md](SECURITY.md) (prompt-injection audit + PAT scope rules), [SANDBOX_SECURITY_VERIFICATION.md](SANDBOX_SECURITY_VERIFICATION.md) (e2b isolation tests), and [REFACTOR_AUDIT.md](REFACTOR_AUDIT.md) (stable-vs-runtime context split audit). Cost baseline for HRD-08 lives in [PROFILING_RESULTS.md](PROFILING_RESULTS.md).
 
 
 ## How Claude and Claude Code were used to build this
