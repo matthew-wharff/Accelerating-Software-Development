@@ -310,20 +310,3 @@ def run_test_writer(
     return written_paths
 
 
-if __name__ == "__main__":
-    _repo = Path(__file__).parent.parent
-    _run_dir = _repo / "output" / "hello_ralph"
-    _sample = str(_run_dir / "code" / "utils" / "greeter.py")
-    _interfaces = str(_run_dir / "context" / "INTERFACES.py")
-    _shared_deps = str(_run_dir / "context" / "shared_dependencies.md")
-
-    written = run_test_writer(
-        generated_file_paths=[_sample],
-        interfaces_path=_interfaces,
-        shared_deps_path=_shared_deps,
-        run_dir=str(_run_dir),
-    )
-    for p in written:
-        logger.info("Smoke test wrote: %s", p)
-    assert written, "Expected at least one written path"
-    logger.info("run_test_writer smoke test passed.")
