@@ -48,7 +48,7 @@ A single chokepoint validator was added at the brief's entry to the system: [`co
 It performs three checks, in order:
 
 1. **Control-character strip** — `re.sub(r"[\x00-\x1f]", "", brief)` removes all C0 control characters (incl. null bytes), then trims whitespace. Stripping runs **before** pattern matching so an attacker cannot hide a trigger phrase behind a null byte (e.g. `"ignore\x00 previous instructions"`).
-2. **Length cap** — rejects briefs exceeding 4000 characters. Keeps prompts within a predictable size, makes pathological inputs cheap to reject, and limits the surface for novel injection phrasings to fit through.
+2. **Length cap** — rejects briefs exceeding 16000 characters. Keeps prompts within a predictable size, makes pathological inputs cheap to reject, and limits the surface for novel injection phrasings to fit through.
 3. **Regex blocklist** — rejects briefs matching any of these patterns (case-insensitive):
    - `ignore (all )?(previous|prior|above) (instructions|prompts?|rules?)`
    - `disregard (all )?(previous|prior|above)`

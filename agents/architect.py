@@ -425,7 +425,7 @@ def run_architect(clarified_brief: str, conventions: str, run_dir: str) -> dict:
     task_queue_raw = _call_claude(
         SYSTEM_PROMPT_TASK_QUEUE,
         task_queue_user_prompt,
-        max_tokens=4096,
+        max_tokens=16384,
         phase="task_queue_generation",
         run_dir=run_dir,
     )
@@ -815,25 +815,3 @@ def run_architect_revision(
     return filtered
 
 
-if __name__ == "__main__":
-    from scripts.workspace import create_run_workspace
-
-    conventions_path = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
-    conventions_content = conventions_path.read_text(encoding="utf-8")
-
-    sample_brief = (
-        "Build a FastAPI REST API for a simple task manager. "
-        "Users can create, list, update, and delete tasks. "
-        "Each task has a title, description, status (todo/in_progress/done), "
-        "and an owner. Use SQLite with SQLModel. Auth via JWT bearer tokens. "
-        "Include an async background job that marks overdue tasks as expired."
-    )
-
-    run_dir = str(create_run_workspace(sample_brief))
-    result = run_architect(sample_brief, conventions_content, run_dir)
-    for key, value in result.items():
-        if key != "task_queue":
-            print(f"{key}: {value}")
-    print(f"task_queue: {len(result['task_queue'])} tasks")
-    for task in result["task_queue"]:
-        print(f"  {task['task_id']}: {task['target_file']}")

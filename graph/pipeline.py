@@ -37,7 +37,6 @@ from agents.synthesis import run_synthesis
 from agents.test_writer import run_test_writer
 from scripts.instrumentation import metrics_path_for, write_summary
 from scripts.logger import get_logger
-from scripts.redaction import redact_state
 from scripts.workspace import create_run_workspace
 import config
 from state.schema import (
@@ -45,7 +44,6 @@ from state.schema import (
     PipelineState,
     TaskEntry,
     TaskLogEntry,
-    default_state,
 )
 
 CONVENTIONS_PATH = Path(__file__).parent.parent / "context" / "CONVENTIONS.md"
@@ -752,7 +750,7 @@ def github_node(state: PipelineState) -> dict:
         ``api_metrics_summary_path``.
     """
     if config.PIPELINE_MODE == "dry_run":
-        logger.info("github_node: DRY RUN — no repo will be created")
+        logger.warning("github_node: DRY RUN — no repo will be created")
         result = _github_node_dry_run(state)
     else:
         result = _github_node_live(state)
@@ -790,7 +788,7 @@ def _github_node_dry_run(state: PipelineState) -> dict:
         + "\n".join(f"- {f}" for f in files_to_commit),
         encoding="utf-8",
     )
-    logger.info("github_node dry run: manifest written to %s", manifest_path)
+    logger.warning("github_node dry run: manifest written to %s", manifest_path)
     return {
         "github_repo_url": f"[dry-run] would create: {repo_name}",
         "status": "complete",
@@ -995,54 +993,3 @@ _builder.add_edge("github", END)
 app = _builder.compile()
 
 
-# ---------------------------------------------------------------------------
-# Smoke test — hardcoded single-task run to prove the architecture
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    import sys
-
-    initial_state = default_state(project_brief="MVP pipeline smoke test")
-    initial_state["task_queue"] = [
-        TaskEntry(
-            task_id="task_001",
-            target_file="hello_pipeline.py",
-            description=(
-                # "Write a Python module with a single function `greet(name: str) -> str` "
-                # "that returns the string 'Hello, {name}!'. "
-                # "Include a Google-style docstring and type annotations."
-                "Build a Python REST API for a task manager with SQLite. Include endpoints for create, read, update, delete tasks. Use FastAPI and include basic input validation."
-            ),
-            interface_refs=[],
-            dependency_paths=[],
-        )
-    ]
-
-    logger.info("Invoking pipeline graph...")
-    final_state = app.invoke(initial_state)
-
-    redacted = redact_state(final_state)
-    logger.info("Pipeline status   : %s", redacted["status"])
-    logger.info("Generated files   : %s", redacted["generated_file_paths"])
-    logger.info("Test feedback     : %s", redacted.get("test_feedback_path"))
-    logger.info("Security feedback : %s", redacted.get("security_feedback_path"))
-    logger.info("Quality feedback  : %s", redacted.get("quality_feedback_path"))
-    logger.info("Task log          : %s", redacted["task_log"])
-    logger.info("GitHub repo       : %s", redacted.get("github_repo_url"))
-    logger.debug("Final state (redacted): %s", redacted)
-
-    assert final_state["generated_file_paths"], "generated_file_paths must not be empty"
-    for p in final_state["generated_file_paths"]:
-        assert Path(p).exists(), f"Expected generated file on disk: {p}"
-
-    for field in (
-        "test_feedback_path",
-        "security_feedback_path",
-        "quality_feedback_path",
-    ):
-        path = final_state.get(field)
-        if path:
-            assert Path(path).exists(), f"Expected {field} on disk: {path}"
-
-    logger.info("All assertions passed — architecture proof complete.")
-    sys.exit(0)
