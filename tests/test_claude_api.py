@@ -4,9 +4,12 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import anthropic
+import pytest
+
 import config
 
 
+@pytest.mark.integration
 def test_claude_api():
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     response = client.messages.create(
