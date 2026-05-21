@@ -43,7 +43,7 @@ def test_e2b_node_happy_path(tmp_path):
     mock_sandbox.__exit__ = MagicMock(return_value=False)
     mock_sandbox.commands.run.return_value = mock_result
 
-    with patch("e2b_code_interpreter.Sandbox", return_value=mock_sandbox):
+    with patch("e2b_code_interpreter.Sandbox.create", return_value=mock_sandbox):
         from graph.pipeline import e2b_node
 
         output = e2b_node(_make_state([str(src)]))
@@ -68,7 +68,7 @@ def test_e2b_node_prefers_main_py(tmp_path):
     mock_sandbox.__exit__ = MagicMock(return_value=False)
     mock_sandbox.commands.run.return_value = mock_result
 
-    with patch("e2b_code_interpreter.Sandbox", return_value=mock_sandbox):
+    with patch("e2b_code_interpreter.Sandbox.create", return_value=mock_sandbox):
         from graph.pipeline import e2b_node
 
         e2b_node(_make_state([str(other), str(main)]))
@@ -90,7 +90,7 @@ def test_e2b_node_falls_back_to_first_file(tmp_path):
     mock_sandbox.__exit__ = MagicMock(return_value=False)
     mock_sandbox.commands.run.return_value = mock_result
 
-    with patch("e2b_code_interpreter.Sandbox", return_value=mock_sandbox):
+    with patch("e2b_code_interpreter.Sandbox.create", return_value=mock_sandbox):
         from graph.pipeline import e2b_node
 
         e2b_node(_make_state([str(first), str(second)]))
@@ -101,7 +101,7 @@ def test_e2b_node_falls_back_to_first_file(tmp_path):
 
 def test_e2b_node_sandbox_exception_captured():
     """e2b_node captures sandbox exceptions and returns them in stderr."""
-    with patch("e2b_code_interpreter.Sandbox", side_effect=RuntimeError("API failure")):
+    with patch("e2b_code_interpreter.Sandbox.create", side_effect=RuntimeError("API failure")):
         from graph.pipeline import e2b_node
 
         output = e2b_node(_make_state(["/fake/path/main.py"]))
@@ -133,7 +133,7 @@ def test_e2b_node_nonzero_exit_code(tmp_path):
     mock_sandbox.__exit__ = MagicMock(return_value=False)
     mock_sandbox.commands.run.return_value = mock_result
 
-    with patch("e2b_code_interpreter.Sandbox", return_value=mock_sandbox):
+    with patch("e2b_code_interpreter.Sandbox.create", return_value=mock_sandbox):
         from graph.pipeline import e2b_node
 
         output = e2b_node(_make_state([str(src)]))
